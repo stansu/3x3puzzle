@@ -1,0 +1,2457 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>拼圖所 · 3×3 滑動拼圖</title>
+<meta name="description" content="上傳自己的照片，切成九塊，玩一場可以滑動的 3×3 相片拼圖。" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="拼圖所 · 3×3 滑動拼圖" />
+<meta property="og:description" content="上傳一張自己的照片，切成九塊，點擊或滑動，把風景拼回來。" />
+<meta name="twitter:card" content="summary" />
+<meta name="theme-color" content="#f2ede3" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23211d18'/%3E%3Crect x='6' y='6' width='9' height='9' rx='1.5' fill='%23f5efe4'/%3E%3Crect x='17' y='6' width='9' height='9' rx='1.5' fill='%23bf5a35'/%3E%3Crect x='6' y='17' width='9' height='9' rx='1.5' fill='%23bf5a35'/%3E%3Crect x='17' y='17' width='9' height='9' rx='1.5' fill='%23f5efe4'/%3E%3C/svg%3E" />
+<style>
+/* ============================================================
+   拼圖所 — 3 × 3 sliding photo puzzle
+   ============================================================ */
+
+:root {
+  --paper: #f2ede3;
+  --paper-deep: #e9e1d3;
+  --card: #faf7f0;
+  --ink: #211d18;
+  --ink-soft: #3d352b;
+  --muted: #706656;
+  --faint: #938878;
+  --line: rgba(43, 36, 27, 0.13);
+  --line-soft: rgba(43, 36, 27, 0.075);
+  --accent: #bf5a35;
+  --accent-dark: #9c4526;
+  --accent-soft: rgba(191, 90, 53, 0.12);
+  --green: #3f6553;
+  --board: #1d1a15;
+  --gap: 4px;
+  --serif: "Noto Serif CJK TC", "Noto Serif TC", "Source Han Serif TC",
+    "Songti TC", "STSong", Georgia, serif;
+  --sans: "Noto Sans CJK TC", "Noto Sans TC", "PingFang TC",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, Consolas,
+    monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html {
+  min-height: 100%;
+  background: var(--paper);
+}
+
+body {
+  min-height: 100dvh;
+  margin: 0;
+  color: var(--ink);
+  background: var(--paper);
+  font-family: var(--sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(48% 38% at 9% 2%, rgba(191, 90, 53, 0.13), transparent 72%),
+    radial-gradient(46% 44% at 96% 92%, rgba(57, 91, 94, 0.11), transparent 74%),
+    radial-gradient(40% 30% at 60% 100%, rgba(174, 143, 93, 0.1), transparent 75%),
+    linear-gradient(180deg, #f4f0e7 0%, var(--paper) 55%, #eee8dc 100%);
+}
+
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.5;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.86' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.13'/%3E%3C/svg%3E");
+}
+
+::selection {
+  color: #fff8ec;
+  background: var(--accent);
+}
+
+button {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- shell / top bar ---------- */
+
+.shell {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 1240px);
+  margin: 0 auto;
+  padding: clamp(18px, 3.2vh, 32px) clamp(16px, 4vw, 48px) 40px;
+  padding-top: max(clamp(18px, 3.2vh, 32px), env(safe-area-inset-top));
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: clamp(14px, 2.4vh, 22px);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.brand-mark {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  padding: 5px;
+  border-radius: 8px;
+  background: var(--ink);
+  box-shadow: 0 4px 10px -6px rgba(30, 24, 17, 0.55);
+}
+
+.brand-mark i {
+  display: block;
+  border-radius: 1.5px;
+  background: #f8f2e7;
+}
+
+.brand-mark i:nth-child(2),
+.brand-mark i:nth-child(3) {
+  background: var(--accent);
+}
+
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.brand-copy b {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+}
+
+.brand-copy small {
+  color: var(--faint);
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 0.28em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.btn:active {
+  transform: translateY(1px) scale(0.995);
+}
+
+.btn svg {
+  flex: 0 0 auto;
+}
+
+.btn-upload {
+  min-height: 44px;
+  padding: 11px 20px;
+  color: #fbf6ec;
+  background: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 10px 20px -12px rgba(33, 29, 24, 0.65);
+}
+
+.btn-upload:hover {
+  background: var(--accent-dark);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 12px 22px -12px rgba(156, 69, 38, 0.6);
+}
+
+/* ---------- layout ---------- */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 332px;
+  align-items: center;
+  gap: clamp(34px, 5.4vw, 78px);
+  margin-top: clamp(22px, 4.4vh, 48px);
+}
+
+.board-area {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.board-shell {
+  width: min(100%, 600px, calc(100dvh - 272px));
+  min-width: 0;
+}
+
+.board-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 26px;
+  margin-bottom: 9px;
+}
+
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 550;
+  letter-spacing: 0.12em;
+}
+
+.state-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--faint);
+  box-shadow: 0 0 0 3px rgba(133, 123, 108, 0.1);
+  transition: background-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.state.active .state-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.state.done .state-dot {
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(63, 101, 83, 0.14);
+}
+
+.text-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 6px 6px 8px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  transition: color 0.18s ease, background-color 0.18s ease;
+}
+
+.text-btn:hover {
+  color: var(--ink);
+  background: rgba(43, 36, 27, 0.055);
+}
+
+.text-btn svg {
+  opacity: 0.7;
+}
+
+/* ---------- board ---------- */
+
+.board-frame {
+  position: relative;
+  padding: 10px;
+  border: 1px solid rgba(65, 52, 38, 0.13);
+  border-radius: 21px;
+  background: var(--card);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 2px 4px rgba(57, 45, 31, 0.05),
+    0 28px 60px -28px rgba(55, 43, 29, 0.48),
+    0 8px 18px -12px rgba(55, 43, 29, 0.18);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.board-frame.drag-over {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 3px var(--accent-soft),
+    0 28px 60px -28px rgba(55, 43, 29, 0.48);
+}
+
+.board {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--board);
+  isolation: isolate;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.board::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.055) inset,
+    0 10px 26px rgba(0, 0, 0, 0.16) inset;
+}
+
+.tile {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  display: block;
+  width: 50px;
+  height: 50px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background-color: #2a251e;
+  background-repeat: no-repeat;
+  background-size: 300% 300%;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.045) inset;
+  cursor: pointer;
+  touch-action: none;
+  will-change: transform;
+  transition:
+    transform 0.23s cubic-bezier(0.22, 0.78, 0.24, 1),
+    opacity 0.2s ease,
+    filter 0.2s ease,
+    box-shadow 0.18s ease;
+}
+
+.tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.12), transparent 45%);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+}
+
+.tile:hover::after {
+  opacity: 0.55;
+}
+
+.tile:active::after {
+  opacity: 0.95;
+}
+
+.tile.movable {
+  box-shadow:
+    0 0 0 1px rgba(250, 242, 228, 0.28) inset,
+    0 0 0 1px rgba(250, 242, 228, 0.08);
+}
+
+.tile:focus-visible {
+  z-index: 4;
+  outline: 2px solid #f9f0df;
+  outline-offset: -4px;
+}
+
+.tile.denied {
+  animation: denied 0.38s ease;
+}
+
+@keyframes denied {
+  0%,
+  100% {
+    filter: brightness(1);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.045) inset;
+  }
+  30% {
+    filter: brightness(0.62) saturate(0.75);
+    box-shadow: 0 0 0 3px rgba(191, 90, 53, 0.85) inset;
+  }
+  65% {
+    filter: brightness(1.08);
+  }
+}
+
+.blank {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 3px;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.035), transparent 62%),
+    #201c16;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.026) inset,
+    0 9px 22px rgba(0, 0, 0, 0.34) inset;
+  pointer-events: none;
+  will-change: transform;
+  transition: transform 0.23s cubic-bezier(0.22, 0.78, 0.24, 1);
+}
+
+.blank::before {
+  content: "";
+  width: 18%;
+  height: 18%;
+  min-width: 14px;
+  min-height: 14px;
+  border: 1px dashed rgba(248, 239, 224, 0.23);
+  border-radius: 3px;
+}
+
+.board.no-anim .tile,
+.board.no-anim .blank {
+  transition: none !important;
+}
+
+.board.is-shuffling .tile {
+  opacity: 0.12;
+  filter: blur(3px);
+}
+
+.board.is-shuffling .blank {
+  opacity: 0;
+}
+
+/* ---------- loading ---------- */
+
+.loader {
+  position: absolute;
+  inset: 10px;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  border-radius: 12px;
+  color: var(--ink-soft);
+  background: rgba(246, 241, 232, 0.94);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(43, 36, 27, 0.16);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- win layer ---------- */
+
+.win-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  border-radius: 12px;
+  background-color: var(--board);
+  background-position: center;
+  background-size: cover;
+  animation: winReveal 0.45s ease both;
+}
+
+.win-layer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(20, 16, 12, 0) 20%, rgba(20, 16, 12, 0.12) 38%, rgba(20, 16, 12, 0.76) 56%, rgba(20, 16, 12, 0.97) 70%, rgba(20, 16, 12, 0.99) 100%),
+    linear-gradient(90deg, rgba(20, 16, 12, 0.18), transparent 58%);
+}
+
+.win-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: clamp(18px, 4.5%, 32px);
+  color: #fbf5e9;
+  animation: winUp 0.55s 0.08s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes winReveal {
+  from {
+    opacity: 0;
+    transform: scale(1.012);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes winUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.win-kicker {
+  margin: 0 0 6px;
+  color: rgba(251, 245, 233, 0.66);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.34em;
+}
+
+.win-content h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(30px, 5.4vw, 46px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.08;
+}
+
+.win-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 9px 0 0;
+  color: rgba(251, 245, 233, 0.76);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+
+.win-stats .sep {
+  opacity: 0.35;
+}
+
+.record {
+  padding: 3px 8px;
+  border: 1px solid rgba(245, 210, 157, 0.4);
+  border-radius: 999px;
+  color: #f4d39c;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+}
+
+.win-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.btn-light {
+  min-height: 40px;
+  padding: 10px 17px;
+  color: #241e17;
+  background: #f8f1e5;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+}
+
+.btn-light:hover {
+  background: #fffaf0;
+}
+
+.btn-outline-light {
+  min-height: 40px;
+  padding: 10px 17px;
+  color: #f8f1e5;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: 0.08em;
+}
+
+.btn-outline-light:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ---------- board footer ---------- */
+
+.board-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 11px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+}
+
+.instruction {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.instruction svg {
+  flex: 0 0 auto;
+  opacity: 0.62;
+}
+
+.progress {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+}
+
+.drop-hint {
+  margin: 9px 0 0;
+  color: var(--faint);
+  font-size: 10.5px;
+  text-align: center;
+  letter-spacing: 0.03em;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 17px;
+  padding: 1px 4px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.38);
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 9.5px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+/* ---------- side panel ---------- */
+
+.panel {
+  min-width: 0;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.eyebrow::before {
+  content: "";
+  width: 22px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+.eyebrow span {
+  opacity: 0.42;
+}
+
+.intro h1 {
+  margin: 15px 0 0;
+  font-family: var(--serif);
+  font-size: clamp(42px, 4.4vw, 62px);
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  line-height: 1.09;
+}
+
+.intro h1 .accent {
+  position: relative;
+  color: var(--accent);
+}
+
+.lede {
+  max-width: 29em;
+  margin: 17px 0 0;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.92;
+  letter-spacing: 0.02em;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: clamp(24px, 3.6vh, 34px);
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.stat {
+  min-width: 0;
+  padding-left: 15px;
+  border-left: 1px solid var(--line-soft);
+}
+
+.stat:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.stat span {
+  display: block;
+  color: var(--muted);
+  font-size: 9.5px;
+  font-weight: 550;
+  letter-spacing: 0.2em;
+}
+
+.stat strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.stat strong.running {
+  color: var(--accent);
+}
+
+.btn-shuffle {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 18px;
+  padding: 15px 18px;
+  border-radius: 14px;
+  color: #f9f3e8;
+  background: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 14px 28px -18px rgba(33, 29, 24, 0.75);
+}
+
+.btn-shuffle:hover {
+  background: var(--accent-dark);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 16px 30px -18px rgba(156, 69, 38, 0.65);
+}
+
+.btn-shuffle svg {
+  width: 15px;
+  height: 15px;
+  opacity: 0.8;
+}
+
+.thumb-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-top: 16px;
+  min-width: 0;
+}
+
+.thumb {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper-deep);
+  box-shadow: 0 2px 6px -4px rgba(40, 32, 23, 0.3);
+}
+
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb-copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.thumb-copy small {
+  color: var(--faint);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+
+.thumb-copy b {
+  overflow: hidden;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.change {
+  flex: 0 0 auto;
+  padding: 7px 8px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(133, 123, 108, 0.35);
+}
+
+.change:hover {
+  color: var(--accent);
+}
+
+.tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 22px 0 0;
+  color: var(--faint);
+  font-size: 10.5px;
+  line-height: 1.7;
+  letter-spacing: 0.02em;
+}
+
+.tip-mark {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--muted);
+  font-family: var(--serif);
+  font-size: 9px;
+  font-style: italic;
+  line-height: 1;
+}
+
+/* ---------- preview modal ---------- */
+
+.peek {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: max(22px, env(safe-area-inset-top)) 22px max(22px, env(safe-area-inset-bottom));
+  background: rgba(28, 23, 17, 0.68);
+  -webkit-backdrop-filter: blur(14px) saturate(0.9);
+  backdrop-filter: blur(14px) saturate(0.9);
+  animation: fadeIn 0.2s ease both;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+body.peek-open {
+  overflow: hidden;
+}
+
+.peek-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(88vw, 680px, calc(92dvh - 88px));
+  max-height: 92dvh;
+  margin: 0;
+  animation: peekIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes peekIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.peek-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: #f7f0e4;
+}
+
+.peek-head span {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+}
+
+.peek-close {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  color: #f7f0e4;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.18s ease;
+}
+
+.peek-close:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.peek-visual {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #17140f;
+  box-shadow: 0 30px 80px -24px rgba(0, 0, 0, 0.8);
+  aspect-ratio: 1;
+  width: 100%;
+  align-self: center;
+}
+
+.peek-visual img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.peek-caption {
+  color: rgba(247, 240, 228, 0.55);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+/* ---------- toast + confetti ---------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  z-index: 80;
+  max-width: min(90vw, 420px);
+  padding: 11px 17px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  color: #fbf5e9;
+  background: rgba(33, 29, 24, 0.94);
+  box-shadow: 0 16px 40px -18px rgba(0, 0, 0, 0.7);
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 10px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.toast.error {
+  background: rgba(126, 47, 29, 0.96);
+}
+
+#confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 17px;
+    margin-top: clamp(16px, 2.8vh, 26px);
+    align-items: start;
+  }
+
+  .board-shell {
+    width: min(100%, 560px);
+    margin: 0 auto;
+  }
+
+  .panel {
+    width: min(100%, 560px);
+    margin: 0 auto;
+    padding: 15px 16px 16px;
+    border: 1px solid var(--line-soft);
+    border-radius: 17px;
+    background: rgba(250, 247, 240, 0.62);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.6) inset,
+      0 18px 36px -30px rgba(55, 43, 29, 0.35);
+  }
+
+  .intro,
+  .thumb-row,
+  .tip {
+    display: none;
+  }
+
+  .stats {
+    margin: 0;
+    padding: 0 0 13px;
+    border-top: 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .stat strong {
+    margin-top: 4px;
+    font-size: 21px;
+  }
+
+  .btn-shuffle {
+    min-height: 47px;
+    margin-top: 13px;
+    padding: 13px 18px;
+    border-radius: 12px;
+  }
+
+  .drop-hint {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .shell {
+    padding-left: 13px;
+    padding-right: 13px;
+    padding-bottom: 26px;
+  }
+
+  .brand-copy small {
+    display: none;
+  }
+
+  .brand-copy b {
+    font-size: 15px;
+  }
+
+  .topbar {
+    padding-bottom: 12px;
+  }
+
+  .btn-upload {
+    min-height: 42px;
+    padding: 10px 16px;
+    font-size: 12.5px;
+  }
+
+  .board-frame {
+    padding: 8px;
+    border-radius: 18px;
+  }
+
+  .loader {
+    inset: 8px;
+  }
+
+  .board-meta {
+    margin-bottom: 7px;
+  }
+
+  .board-foot {
+    margin-top: 9px;
+    font-size: 10.5px;
+  }
+
+  .board-shell {
+    width: min(100%, 540px, calc(100dvh - 318px));
+  }
+
+  .stat strong {
+    font-size: 19px;
+  }
+
+  .stat span {
+    font-size: 9px;
+  }
+
+  .win-content {
+    padding: 16px;
+  }
+
+  .win-actions {
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .btn-light,
+  .btn-outline-light {
+    min-height: 37px;
+    padding: 9px 13px;
+    font-size: 11px;
+  }
+
+  .record {
+    font-size: 8px;
+  }
+}
+
+@media (max-height: 700px) and (max-width: 900px) {
+  .layout {
+    gap: 12px;
+    margin-top: 10px;
+  }
+
+  .board-shell {
+    width: min(100%, 560px, calc(100dvh - 350px));
+  }
+
+  .board-foot {
+    margin-top: 7px;
+  }
+
+  .panel {
+    width: min(100%, 560px, calc(100dvh - 350px));
+    padding: 12px 14px 13px;
+  }
+
+  .stats {
+    padding-bottom: 10px;
+  }
+
+  .stat strong {
+    font-size: 19px;
+  }
+
+  .btn-shuffle {
+    min-height: 43px;
+    margin-top: 10px;
+    padding: 11px 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<div class="shell">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="brand-copy">
+        <b>拼圖所</b>
+        <small>PICTURE PUZZLE</small>
+      </span>
+    </div>
+    <button class="btn btn-upload" id="uploadBtn" type="button">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4.5 14.5v3A2.5 2.5 0 0 0 7 20h10a2.5 2.5 0 0 0 2.5-2.5v-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      </svg>
+      <span>上傳照片</span>
+    </button>
+  </header>
+
+  <main class="layout">
+    <section class="board-area" aria-label="3 乘 3 滑動拼圖">
+      <div class="board-shell">
+        <div class="board-meta">
+          <span class="state" id="state">
+            <span class="state-dot" aria-hidden="true"></span>
+            <span id="stateLabel">準備開始</span>
+          </span>
+          <button class="text-btn" id="peekBtn" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+              <circle cx="12" cy="12" r="2.7" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+            <span>看原圖</span>
+          </button>
+        </div>
+
+        <div class="board-frame" id="boardFrame">
+          <div class="board" id="board" aria-label="滑動拼圖，空白格旁的拼圖可以滑入">
+            <div class="blank" id="blank" aria-hidden="true"></div>
+            <div class="win-layer" id="winLayer" hidden>
+              <div class="win-content">
+                <p class="win-kicker">COMPLETE</p>
+                <h2>拼好了。</h2>
+                <p class="win-stats">
+                  <span id="winMoves">0 步</span>
+                  <span class="sep" aria-hidden="true">·</span>
+                  <span id="winTime">00:00</span>
+                  <span class="record" id="winRecord" hidden>新紀錄</span>
+                </p>
+                <div class="win-actions">
+                  <button class="btn btn-light" id="againBtn" type="button">再玩一次</button>
+                  <button class="btn btn-outline-light" id="changeWinBtn" type="button">換一張照片</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="loader" id="loader" hidden>
+            <span class="spinner" aria-hidden="true"></span>
+            <span>正在整理照片…</span>
+          </div>
+        </div>
+
+        <div class="board-foot">
+          <p class="instruction">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M9 11V6.5a1.5 1.5 0 0 1 3 0V11m0-1.5a1.5 1.5 0 0 1 3 0V11m0-.5a1.5 1.5 0 0 1 3 0v4.2A6.3 6.3 0 0 1 11.7 21h-.9a5 5 0 0 1-4-2l-2.4-3.2a1.6 1.6 0 0 1 2.5-2L9 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span id="instructionText">點擊或滑動空格旁的拼圖</span>
+          </p>
+          <p class="progress" id="progress">歸位 0 / 8</p>
+        </div>
+
+        <p class="drop-hint">也可以把照片拖進來，或按 <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>V</kbd> 貼上</p>
+      </div>
+    </section>
+
+    <aside class="panel" aria-label="遊戲資訊與操作">
+      <div class="intro">
+        <p class="eyebrow">3 × 3 <span>·</span> 九宮格</p>
+        <h1>把風景<br><span class="accent">拼</span>回來。</h1>
+        <p class="lede">上傳一張自己的照片，切成九塊。滑動拼圖，讓散落的畫面重新完整。</p>
+      </div>
+
+      <div class="stats" aria-label="遊戲統計">
+        <div class="stat">
+          <span>步數</span>
+          <strong id="moves">0</strong>
+        </div>
+        <div class="stat">
+          <span>時間</span>
+          <strong id="timer">00:00</strong>
+        </div>
+        <div class="stat">
+          <span>最佳</span>
+          <strong id="best">--:--</strong>
+        </div>
+      </div>
+
+      <button class="btn btn-shuffle" id="shuffleBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M16.5 4.5 20 8l-3.5 3.5M4 8h3.2c2 0 3.1 1.1 4.3 2.7l1.1 1.5c1.2 1.6 2.3 2.8 4.4 2.8H20m-3.5-3.5L20 16l-3.5 3.5M4 16h3.2c2 0 3.1-1.1 4.3-2.7l1.1-1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>重新打亂</span>
+      </button>
+
+      <div class="thumb-row">
+        <span class="thumb"><img id="thumbImg" alt="" /></span>
+        <span class="thumb-copy">
+          <small>目前照片</small>
+          <b id="imageName">暮色山稜</b>
+        </span>
+        <button class="change" id="changeBtn" type="button">更換</button>
+      </div>
+
+      <p class="tip">
+        <span class="tip-mark" aria-hidden="true">i</span>
+        <span>小提示：先按「看原圖」記住輪廓，再從邊角開始拼。方向鍵也能滑動拼圖。</span>
+      </p>
+    </aside>
+  </main>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" hidden />
+
+<div class="peek" id="peekView" hidden role="dialog" aria-modal="true" aria-labelledby="peekTitle">
+  <div class="peek-card">
+    <div class="peek-head">
+      <span id="peekTitle">原圖 · ORIGINAL</span>
+      <button class="peek-close" id="closePeekBtn" type="button" aria-label="關閉原圖">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <div class="peek-visual">
+      <img id="peekImg" alt="目前拼圖的完整原圖" />
+    </div>
+    <p class="peek-caption" id="peekCaption">暮色山稜</p>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<p class="sr-only" id="live" aria-live="polite"></p>
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<script>
+(() => {
+  "use strict";
+
+  const SIZE = 3;
+  const BLANK = 8;
+  const PIECES = 8;
+  const BEST_KEY = "photo-puzzle-best-v1";
+  const IMAGE_SIZE = 1200;
+
+  const boardEl = document.getElementById("board");
+  const blankEl = document.getElementById("blank");
+  const boardFrame = document.getElementById("boardFrame");
+  const winLayer = document.getElementById("winLayer");
+  const winMovesEl = document.getElementById("winMoves");
+  const winTimeEl = document.getElementById("winTime");
+  const winRecordEl = document.getElementById("winRecord");
+  const movesEl = document.getElementById("moves");
+  const timerEl = document.getElementById("timer");
+  const bestEl = document.getElementById("best");
+  const progressEl = document.getElementById("progress");
+  const instructionTextEl = document.getElementById("instructionText");
+  const stateEl = document.getElementById("state");
+  const stateLabelEl = document.getElementById("stateLabel");
+  const imageNameEl = document.getElementById("imageName");
+  const thumbImg = document.getElementById("thumbImg");
+  const peekImg = document.getElementById("peekImg");
+  const peekCaption = document.getElementById("peekCaption");
+  const peekView = document.getElementById("peekView");
+  const fileInput = document.getElementById("fileInput");
+  const loader = document.getElementById("loader");
+  const toastEl = document.getElementById("toast");
+  const liveEl = document.getElementById("live");
+  const confettiCanvas = document.getElementById("confetti");
+
+  const tiles = [];
+
+  const game = {
+    board: Array.from({ length: SIZE * SIZE }, (_, i) => i),
+    imageUrl: "",
+    imageName: "暮色山稜",
+    moves: 0,
+    started: false,
+    won: false,
+    busy: false,
+    startTime: 0,
+    elapsed: 0,
+    timerId: 0,
+    roundId: 0,
+    shuffleTimer: 0,
+    toastTimer: 0,
+    uploadSeq: 0,
+    peekOpen: false,
+    suppressClick: false,
+    lastFocus: null
+  };
+
+  let swipeStart = null;
+  let resizeTimer = 0;
+  let confettiFrame = 0;
+
+  const prefersReduced = () =>
+    window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const pad = (n) => String(n).padStart(2, "0");
+
+  function formatTime(ms) {
+    const total = Math.max(0, Math.floor(ms / 1000));
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return `${pad(m)}:${pad(s)}`;
+  }
+
+  function isSolved(board = game.board) {
+    return board.every((piece, i) => piece === i);
+  }
+
+  function correctCount() {
+    let count = 0;
+    for (let i = 0; i < PIECES; i += 1) {
+      if (game.board[i] === i) count += 1;
+    }
+    return count;
+  }
+
+  function neighborsOf(index) {
+    const row = Math.floor(index / SIZE);
+    const col = index % SIZE;
+    const out = [];
+    if (row > 0) out.push(index - SIZE);
+    if (row < SIZE - 1) out.push(index + SIZE);
+    if (col > 0) out.push(index - 1);
+    if (col < SIZE - 1) out.push(index + 1);
+    return out;
+  }
+
+  function isAdjacent(a, b) {
+    if (a < 0 || b < 0) return false;
+    const ar = Math.floor(a / SIZE);
+    const ac = a % SIZE;
+    const br = Math.floor(b / SIZE);
+    const bc = b % SIZE;
+    return Math.abs(ar - br) + Math.abs(ac - bc) === 1;
+  }
+
+  /* ---------- default artwork ---------- */
+
+  function makeDefaultArtwork() {
+    const S = IMAGE_SIZE;
+    const canvas = document.createElement("canvas");
+    canvas.width = S;
+    canvas.height = S;
+    const ctx = canvas.getContext("2d");
+
+    // Sky
+    const sky = ctx.createLinearGradient(0, 0, 0, S * 0.8);
+    sky.addColorStop(0, "#101827");
+    sky.addColorStop(0.25, "#2c2948");
+    sky.addColorStop(0.46, "#61445a");
+    sky.addColorStop(0.63, "#a95f58");
+    sky.addColorStop(0.76, "#dd9365");
+    sky.addColorStop(0.88, "#f1bd83");
+    sky.addColorStop(1, "#f5c98f");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, S, S);
+
+    // Sun halo
+    const glow = ctx.createRadialGradient(S * 0.72, S * 0.4, 0, S * 0.72, S * 0.4, S * 0.48);
+    glow.addColorStop(0, "rgba(255, 230, 184, 0.92)");
+    glow.addColorStop(0.16, "rgba(255, 205, 148, 0.52)");
+    glow.addColorStop(0.43, "rgba(238, 150, 110, 0.18)");
+    glow.addColorStop(1, "rgba(238, 150, 110, 0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, S, S * 0.82);
+
+    // Stars
+    for (let i = 0; i < 90; i += 1) {
+      const sx = Math.random() * S;
+      const sy = Math.random() * S * 0.46;
+      const r = Math.random() * 1.15 + 0.35;
+      ctx.beginPath();
+      ctx.arc(sx, sy, r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 235, 202, ${(Math.random() * 0.5 + 0.15).toFixed(2)})`;
+      ctx.fill();
+    }
+
+    // Sun disc
+    ctx.beginPath();
+    ctx.arc(S * 0.72, S * 0.4, S * 0.075, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffe4ae";
+    ctx.fill();
+
+    // Birds
+    ctx.strokeStyle = "rgba(32, 25, 32, 0.55)";
+    ctx.lineWidth = 1.7;
+    ctx.lineCap = "round";
+    const birds = [
+      [0.24, 0.28, 0.032, 0.013],
+      [0.3, 0.235, 0.023, 0.01],
+      [0.35, 0.305, 0.018, 0.008]
+    ];
+    for (const [bx, by, bw, bh] of birds) {
+      ctx.beginPath();
+      ctx.moveTo(S * (bx - bw), S * (by + bh));
+      ctx.quadraticCurveTo(S * (bx - bw * 0.45), S * (by - bh), S * bx, S * by);
+      ctx.quadraticCurveTo(S * (bx + bw * 0.45), S * (by - bh), S * (bx + bw), S * (by + bh));
+      ctx.stroke();
+    }
+
+    // Far ridge
+    const far = ctx.createLinearGradient(0, S * 0.48, 0, S * 0.7);
+    far.addColorStop(0, "#6a5571");
+    far.addColorStop(1, "#4a3d58");
+    ctx.beginPath();
+    ctx.moveTo(0, S * 0.61);
+    ctx.bezierCurveTo(S * 0.09, S * 0.56, S * 0.15, S * 0.58, S * 0.23, S * 0.505);
+    ctx.bezierCurveTo(S * 0.3, S * 0.445, S * 0.37, S * 0.56, S * 0.46, S * 0.525);
+    ctx.bezierCurveTo(S * 0.55, S * 0.49, S * 0.62, S * 0.575, S * 0.7, S * 0.55);
+    ctx.bezierCurveTo(S * 0.8, S * 0.52, S * 0.87, S * 0.6, S, S * 0.57);
+    ctx.lineTo(S, S * 0.76);
+    ctx.lineTo(0, S * 0.76);
+    ctx.closePath();
+    ctx.fillStyle = far;
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255, 205, 160, 0.24)";
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    // Middle ridge
+    const mid = ctx.createLinearGradient(0, S * 0.56, 0, S * 0.8);
+    mid.addColorStop(0, "#4b465b");
+    mid.addColorStop(1, "#30333f");
+    ctx.beginPath();
+    ctx.moveTo(0, S * 0.685);
+    ctx.bezierCurveTo(S * 0.08, S * 0.64, S * 0.16, S * 0.605, S * 0.25, S * 0.655);
+    ctx.bezierCurveTo(S * 0.34, S * 0.705, S * 0.42, S * 0.615, S * 0.52, S * 0.645);
+    ctx.bezierCurveTo(S * 0.63, S * 0.678, S * 0.72, S * 0.625, S * 0.81, S * 0.665);
+    ctx.bezierCurveTo(S * 0.9, S * 0.703, S * 0.96, S * 0.682, S, S * 0.65);
+    ctx.lineTo(S, S * 0.82);
+    ctx.lineTo(0, S * 0.82);
+    ctx.closePath();
+    ctx.fillStyle = mid;
+    ctx.fill();
+
+    // Lake
+    const water = ctx.createLinearGradient(0, S * 0.72, 0, S);
+    water.addColorStop(0, "#5b505e");
+    water.addColorStop(0.35, "#343542");
+    water.addColorStop(1, "#151923");
+    ctx.fillStyle = water;
+    ctx.fillRect(0, S * 0.745, S, S * 0.255);
+
+    // Sun reflection
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(S * 0.42, S * 0.74, S * 0.58, S * 0.26);
+    ctx.clip();
+    for (let i = 0; i < 52; i += 1) {
+      const y = S * 0.752 + Math.random() * S * 0.235;
+      const w = S * (0.035 + Math.random() * 0.13);
+      const x = S * 0.72 - w / 2 + (Math.random() - 0.5) * S * 0.055;
+      ctx.fillStyle = `rgba(247, 190, 124, ${(Math.random() * 0.2 + 0.035).toFixed(3)})`;
+      ctx.fillRect(x, y, w, 1 + Math.random() * 2.2);
+    }
+    ctx.restore();
+
+    // Mist
+    const mist = ctx.createLinearGradient(0, S * 0.665, 0, S * 0.765);
+    mist.addColorStop(0, "rgba(255, 213, 168, 0)");
+    mist.addColorStop(0.46, "rgba(255, 213, 168, 0.16)");
+    mist.addColorStop(1, "rgba(255, 213, 168, 0)");
+    ctx.fillStyle = mist;
+    ctx.fillRect(0, S * 0.665, S, S * 0.1);
+
+    // Near shore hills
+    const near = ctx.createLinearGradient(0, S * 0.8, 0, S);
+    near.addColorStop(0, "#232832");
+    near.addColorStop(1, "#11151c");
+    ctx.beginPath();
+    ctx.moveTo(0, S * 0.875);
+    ctx.bezierCurveTo(S * 0.12, S * 0.835, S * 0.24, S * 0.858, S * 0.36, S * 0.9);
+    ctx.bezierCurveTo(S * 0.45, S * 0.932, S * 0.53, S * 0.927, S * 0.62, S * 0.885);
+    ctx.bezierCurveTo(S * 0.73, S * 0.832, S * 0.84, S * 0.83, S, S * 0.866);
+    ctx.lineTo(S, S);
+    ctx.lineTo(0, S);
+    ctx.closePath();
+    ctx.fillStyle = near;
+    ctx.fill();
+
+    // Pine silhouettes
+    function pine(x, baseY, height, width, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x - width * 0.055, baseY - height * 0.12, width * 0.11, height * 0.14);
+      for (let layer = 0; layer < 4; layer += 1) {
+        const t = layer / 4;
+        const topY = baseY - height * (0.16 + (1 - t) * 0.76);
+        const half = width * (0.2 + t * 0.3);
+        const bottomY = baseY - height * (0.1 + (3 - layer) * 0.13);
+        ctx.beginPath();
+        ctx.moveTo(x, topY);
+        ctx.lineTo(x - half, bottomY);
+        ctx.lineTo(x + half, bottomY);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    pine(S * 0.155, S * 0.955, S * 0.26, S * 0.1, "#0e1218");
+    pine(S * 0.235, S * 0.97, S * 0.19, S * 0.068, "#11161d");
+    pine(S * 0.087, S * 0.985, S * 0.15, S * 0.055, "#11161d");
+    pine(S * 0.86, S * 0.95, S * 0.17, S * 0.064, "#0f141a");
+    pine(S * 0.925, S * 0.965, S * 0.22, S * 0.08, "#0d1117");
+
+    // Warm foreground haze
+    const haze = ctx.createRadialGradient(S * 0.7, S * 0.72, 0, S * 0.7, S * 0.72, S * 0.5);
+    haze.addColorStop(0, "rgba(250, 184, 120, 0.1)");
+    haze.addColorStop(1, "rgba(250, 184, 120, 0)");
+    ctx.fillStyle = haze;
+    ctx.fillRect(0, 0, S, S);
+
+    // Grain
+    const noiseCanvas = document.createElement("canvas");
+    noiseCanvas.width = 160;
+    noiseCanvas.height = 160;
+    const noiseCtx = noiseCanvas.getContext("2d");
+    const noiseData = noiseCtx.createImageData(160, 160);
+    for (let i = 0; i < noiseData.data.length; i += 4) {
+      const v = Math.floor(Math.random() * 255);
+      noiseData.data[i] = v;
+      noiseData.data[i + 1] = v;
+      noiseData.data[i + 2] = v;
+      noiseData.data[i + 3] = Math.floor(Math.random() * 22);
+    }
+    noiseCtx.putImageData(noiseData, 0, 0);
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = ctx.createPattern(noiseCanvas, "repeat");
+    ctx.fillRect(0, 0, S, S);
+    ctx.restore();
+
+    // Vignette
+    const vignette = ctx.createRadialGradient(S * 0.5, S * 0.47, S * 0.15, S * 0.5, S * 0.47, S * 0.74);
+    vignette.addColorStop(0, "rgba(10, 12, 18, 0)");
+    vignette.addColorStop(0.72, "rgba(10, 12, 18, 0.08)");
+    vignette.addColorStop(1, "rgba(10, 12, 18, 0.42)");
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, S, S);
+
+    return canvas.toDataURL("image/jpeg", 0.91);
+  }
+
+  /* ---------- tiles / rendering ---------- */
+
+  function buildTiles() {
+    for (let piece = 0; piece < PIECES; piece += 1) {
+      const tile = document.createElement("button");
+      tile.type = "button";
+      tile.className = "tile";
+      tile.dataset.piece = String(piece);
+      tile.setAttribute("aria-label", `第 ${piece + 1} 塊拼圖`);
+      tile.style.backgroundPosition = `${(piece % SIZE) * 50}% ${Math.floor(piece / SIZE) * 50}%`;
+      boardEl.insertBefore(tile, blankEl);
+      tiles.push(tile);
+    }
+
+    boardEl.addEventListener("click", onBoardClick);
+    boardEl.addEventListener("pointerdown", onPointerDown);
+    boardEl.addEventListener("pointerup", onPointerUp);
+    boardEl.addEventListener("pointercancel", () => {
+      swipeStart = null;
+    });
+  }
+
+  function applyImage(url) {
+    game.imageUrl = url;
+    const cssUrl = `url("${url}")`;
+    for (const tile of tiles) {
+      tile.style.backgroundImage = cssUrl;
+    }
+    winLayer.style.backgroundImage = cssUrl;
+    thumbImg.src = url;
+    peekImg.src = url;
+    imageNameEl.textContent = game.imageName;
+    peekCaption.textContent = game.imageName;
+  }
+
+  function tileSize() {
+    const width = boardEl.clientWidth;
+    const gap = parseFloat(getComputedStyle(boardEl).getPropertyValue("--gap")) || 0;
+    const size = (width - gap * (SIZE - 1)) / SIZE;
+    return { width, gap, size, step: size + gap };
+  }
+
+  function renderPositions(animate = true) {
+    const { size, step } = tileSize();
+    if (size <= 0) return;
+
+    if (!animate) boardEl.classList.add("no-anim");
+
+    for (const tile of tiles) {
+      const piece = Number(tile.dataset.piece);
+      const index = game.board.indexOf(piece);
+      const x = (index % SIZE) * step;
+      const y = Math.floor(index / SIZE) * step;
+      tile.style.width = `${size}px`;
+      tile.style.height = `${size}px`;
+      tile.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    }
+
+    const blankIndex = game.board.indexOf(BLANK);
+    const bx = (blankIndex % SIZE) * step;
+    const by = Math.floor(blankIndex / SIZE) * step;
+    blankEl.style.width = `${size}px`;
+    blankEl.style.height = `${size}px`;
+    blankEl.style.transform = `translate3d(${bx}px, ${by}px, 0)`;
+
+    if (!animate) {
+      void boardEl.offsetWidth;
+      requestAnimationFrame(() => boardEl.classList.remove("no-anim"));
+    }
+  }
+
+  function updateMovable() {
+    const blankIndex = game.board.indexOf(BLANK);
+    for (const tile of tiles) {
+      const piece = Number(tile.dataset.piece);
+      const index = game.board.indexOf(piece);
+      tile.classList.toggle("movable", !game.won && isAdjacent(index, blankIndex));
+    }
+  }
+
+  function renderStats() {
+    movesEl.textContent = String(game.moves);
+    timerEl.textContent = formatTime(game.elapsed);
+    progressEl.textContent = `歸位 ${correctCount()} / ${PIECES}`;
+    stateEl.classList.toggle("active", game.started && !game.won);
+    stateEl.classList.toggle("done", game.won);
+    stateLabelEl.textContent = game.won ? "完成" : game.started ? "拼圖中" : "準備開始";
+    instructionTextEl.textContent = game.won
+      ? "拼圖完成，欣賞一下完整畫面"
+      : "點擊或滑動空格旁的拼圖";
+    timerEl.classList.toggle("running", game.started && !game.won);
+  }
+
+  function renderAll(animate = true) {
+    renderPositions(animate);
+    updateMovable();
+    renderStats();
+  }
+
+  /* ---------- game flow ---------- */
+
+  function stopTimer() {
+    if (game.timerId) {
+      clearInterval(game.timerId);
+      game.timerId = 0;
+    }
+  }
+
+  function startTimer() {
+    if (game.timerId) return;
+    game.startTime = performance.now() - game.elapsed;
+    game.timerId = window.setInterval(() => {
+      game.elapsed = performance.now() - game.startTime;
+      timerEl.textContent = formatTime(game.elapsed);
+    }, 250);
+  }
+
+  function randomSolvableBoard() {
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      const board = Array.from({ length: SIZE * SIZE }, (_, i) => i);
+      let blank = BLANK;
+      let previousBlank = -1;
+
+      for (let i = 0; i < 140; i += 1) {
+        const options = neighborsOf(blank).filter((n) => n !== previousBlank);
+        const pick = options[Math.floor(Math.random() * options.length)];
+        [board[blank], board[pick]] = [board[pick], board[blank]];
+        previousBlank = blank;
+        blank = pick;
+      }
+
+      if (!isSolved(board)) return board;
+    }
+    return [0, 1, 2, 3, 4, 5, 6, 8, 7];
+  }
+
+  function resetRound({ animate = true } = {}) {
+    window.clearTimeout(game.shuffleTimer);
+    stopTimer();
+    game.roundId += 1;
+    game.busy = true;
+    game.moves = 0;
+    game.started = false;
+    game.won = false;
+    game.elapsed = 0;
+    game.suppressClick = false;
+    game.board = randomSolvableBoard();
+
+    winLayer.hidden = true;
+    boardEl.classList.remove("won");
+    timerEl.classList.remove("running");
+    for (const tile of tiles) tile.tabIndex = 0;
+
+    if (animate && !prefersReduced()) {
+      boardEl.classList.add("is-shuffling");
+      renderPositions(false);
+      const round = game.roundId;
+      game.shuffleTimer = window.setTimeout(() => {
+        if (round !== game.roundId) return;
+        renderAll(false);
+        boardEl.classList.remove("is-shuffling");
+        game.busy = false;
+      }, 170);
+    } else {
+      renderAll(false);
+      boardEl.classList.remove("is-shuffling");
+      game.busy = false;
+    }
+  }
+
+  function makeMove(index) {
+    if (game.busy || game.won) return false;
+    const blankIndex = game.board.indexOf(BLANK);
+    if (!isAdjacent(index, blankIndex)) return false;
+
+    [game.board[blankIndex], game.board[index]] = [game.board[index], game.board[blankIndex]];
+
+    if (!game.started) {
+      game.started = true;
+      startTimer();
+    }
+
+    game.moves += 1;
+    renderAll(true);
+
+    if (isSolved()) {
+      game.busy = true;
+      window.setTimeout(finishGame, 230);
+    }
+    return true;
+  }
+
+  function moveTile(piece) {
+    if (game.busy || game.won) return;
+    const index = game.board.indexOf(piece);
+    if (index < 0) return;
+    if (!makeMove(index)) {
+      const tile = tiles[piece];
+      tile.classList.remove("denied");
+      void tile.offsetWidth;
+      tile.classList.add("denied");
+      window.setTimeout(() => tile.classList.remove("denied"), 420);
+    }
+  }
+
+  function moveDirection(direction) {
+    if (game.busy || game.won) return;
+    const blank = game.board.indexOf(BLANK);
+    const row = Math.floor(blank / SIZE);
+    const col = blank % SIZE;
+    let target = -1;
+
+    if (direction === "left" && col < SIZE - 1) target = blank + 1;
+    if (direction === "right" && col > 0) target = blank - 1;
+    if (direction === "up" && row < SIZE - 1) target = blank + SIZE;
+    if (direction === "down" && row > 0) target = blank - SIZE;
+
+    if (target >= 0) {
+      makeMove(target);
+    }
+  }
+
+  function finishGame() {
+    if (!isSolved() || game.won) return;
+
+    game.won = true;
+    game.busy = false;
+    if (game.started) {
+      game.elapsed = performance.now() - game.startTime;
+      game.started = false;
+    }
+    stopTimer();
+    renderAll(false);
+    timerEl.textContent = formatTime(game.elapsed);
+    progressEl.textContent = `歸位 ${PIECES} / ${PIECES}`;
+    stateLabelEl.textContent = "完成";
+    stateEl.classList.remove("active");
+    stateEl.classList.add("done");
+    timerEl.classList.remove("running");
+
+    winMovesEl.textContent = `${game.moves} 步`;
+    winTimeEl.textContent = formatTime(game.elapsed);
+    winLayer.style.backgroundImage = `url("${game.imageUrl}")`;
+
+    const previousBest = getBest();
+    const isRecord = previousBest === null || game.elapsed < previousBest;
+    if (isRecord) {
+      saveBest(game.elapsed);
+      refreshBest();
+    }
+    winRecordEl.hidden = !isRecord;
+
+    for (const tile of tiles) tile.tabIndex = -1;
+
+    const round = game.roundId;
+    window.setTimeout(() => {
+      if (round !== game.roundId || !game.won) return;
+      winLayer.hidden = false;
+      boardEl.classList.add("won");
+      launchConfetti();
+      liveEl.textContent = `拼圖完成，用了 ${game.moves} 步，時間 ${formatTime(game.elapsed)}。`;
+      document.getElementById("againBtn").focus({ preventScroll: true });
+    }, 250);
+  }
+
+  /* ---------- best score ---------- */
+
+  function getBest() {
+    try {
+      const raw = window.localStorage.getItem(BEST_KEY);
+      if (!raw) return null;
+      const value = Number(raw);
+      return Number.isFinite(value) && value >= 0 ? value : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function saveBest(value) {
+    try {
+      window.localStorage.setItem(BEST_KEY, String(Math.round(value)));
+    } catch {
+      /* private mode or file restrictions */
+    }
+  }
+
+  function refreshBest() {
+    const best = getBest();
+    bestEl.textContent = best === null ? "--:--" : formatTime(best);
+  }
+
+  /* ---------- interaction ---------- */
+
+  function onBoardClick(event) {
+    if (game.suppressClick) {
+      game.suppressClick = false;
+      return;
+    }
+    const tile = event.target.closest(".tile");
+    if (!tile) return;
+    if (game.won) return;
+    moveTile(Number(tile.dataset.piece));
+  }
+
+  function onPointerDown(event) {
+    if (!event.isPrimary || game.busy || game.won) return;
+    if (event.target.closest(".win-layer")) return;
+    swipeStart = {
+      x: event.clientX,
+      y: event.clientY,
+      time: performance.now(),
+      pointerId: event.pointerId
+    };
+  }
+
+  function onPointerUp(event) {
+    if (!swipeStart) return;
+    const start = swipeStart;
+    swipeStart = null;
+    if (start.pointerId !== event.pointerId) return;
+
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    const distance = Math.hypot(dx, dy);
+    const duration = performance.now() - start.time;
+
+    if (distance < 26 || duration > 900) return;
+
+    let direction = "";
+    if (Math.abs(dx) > Math.abs(dy)) {
+      direction = dx > 0 ? "right" : "left";
+    } else {
+      direction = dy > 0 ? "down" : "up";
+    }
+
+    game.suppressClick = true;
+    window.setTimeout(() => {
+      game.suppressClick = false;
+    }, 80);
+    moveDirection(direction);
+  }
+
+  function onKeyDown(event) {
+    if (game.peekOpen) {
+      if (event.key === "Escape") closePeek();
+      return;
+    }
+
+    const directionMap = {
+      ArrowLeft: "left",
+      ArrowRight: "right",
+      ArrowUp: "up",
+      ArrowDown: "down"
+    };
+
+    const direction = directionMap[event.key];
+    if (!direction) return;
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.target instanceof HTMLInputElement) return;
+
+    event.preventDefault();
+    moveDirection(direction);
+  }
+
+  /* ---------- preview ---------- */
+
+  function openPeek() {
+    if (game.peekOpen) return;
+    game.peekOpen = true;
+    game.lastFocus = document.activeElement;
+    peekView.hidden = false;
+    document.body.classList.add("peek-open");
+    document.getElementById("closePeekBtn").focus({ preventScroll: true });
+  }
+
+  function closePeek() {
+    if (!game.peekOpen) return;
+    game.peekOpen = false;
+    peekView.hidden = true;
+    document.body.classList.remove("peek-open");
+    if (game.lastFocus && typeof game.lastFocus.focus === "function") {
+      game.lastFocus.focus({ preventScroll: true });
+    }
+  }
+
+  /* ---------- toast ---------- */
+
+  function showToast(message, isError = false) {
+    window.clearTimeout(game.toastTimer);
+    toastEl.textContent = message;
+    toastEl.classList.toggle("error", isError);
+    toastEl.classList.add("show");
+    game.toastTimer = window.setTimeout(() => {
+      toastEl.classList.remove("show");
+    }, 2600);
+  }
+
+  /* ---------- image upload ---------- */
+
+  function loadImageElement(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.decoding = "async";
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("image decode failed"));
+      img.src = url;
+    });
+  }
+
+  async function fileToDataUrl(file) {
+    if (!file) throw new Error("no file");
+    if (file.type && !file.type.startsWith("image/")) throw new Error("not image");
+
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      let img;
+      try {
+        img = await loadImageElement(objectUrl);
+        if (img.decode) {
+          try {
+            await img.decode();
+          } catch {
+            /* some browsers reject decode() for already-loaded images */
+          }
+        }
+      } catch {
+        throw new Error("decode failed");
+      }
+
+      const width = img.naturalWidth || img.width;
+      const height = img.naturalHeight || img.height;
+      if (!width || !height) throw new Error("empty image");
+
+      const size = IMAGE_SIZE;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d", { alpha: false });
+      ctx.fillStyle = "#1d1a15";
+      ctx.fillRect(0, 0, size, size);
+
+      const scale = Math.max(size / width, size / height);
+      const drawW = width * scale;
+      const drawH = height * scale;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, (size - drawW) / 2, (size - drawH) / 2, drawW, drawH);
+
+      return { url: canvas.toDataURL("image/jpeg", 0.9), width, height };
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  }
+
+  async function useFile(file, announce = true) {
+    if (!file) return;
+    if (!file.type || !file.type.startsWith("image/")) {
+      showToast("請選擇圖片檔（JPG、PNG、WebP…）", true);
+      return;
+    }
+
+    const seq = (game.uploadSeq += 1);
+    loader.hidden = false;
+    game.busy = true;
+    window.clearTimeout(game.shuffleTimer);
+
+    try {
+      // Let the loading layer paint before heavier image work.
+      await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 30)));
+      const result = await fileToDataUrl(file);
+      if (seq !== game.uploadSeq) return;
+
+      game.imageName =
+        (file.name || "我的照片")
+          .replace(/\.[^.]+$/, "")
+          .replace(/[_-]+/g, " ")
+          .trim() || "我的照片";
+      applyImage(result.url);
+      resetRound({ animate: false });
+      refreshBest();
+
+      if (announce) {
+        showToast(`「${game.imageName}」已換好，開始拼吧`);
+        liveEl.textContent = `已載入照片 ${game.imageName}，拼圖已重新打亂。`;
+      }
+    } catch {
+      if (seq === game.uploadSeq) {
+        showToast("這張圖片讀取失敗，換一張試試看", true);
+      }
+    } finally {
+      if (seq === game.uploadSeq) {
+        loader.hidden = true;
+        game.busy = false;
+      }
+    }
+  }
+
+  function hasFiles(event) {
+    const dt = event.dataTransfer;
+    if (!dt) return false;
+    if (dt.types && Array.from(dt.types).includes("Files")) return true;
+    return dt.files && dt.files.length > 0;
+  }
+
+  function handleDroppedFile(event) {
+    const files = event.dataTransfer && event.dataTransfer.files;
+    if (!files || !files.length) return;
+    const image = Array.from(files).find((f) => f.type && f.type.startsWith("image/"));
+    if (image) {
+      useFile(image);
+    } else {
+      showToast("拖進來的檔案不是圖片喔", true);
+    }
+  }
+
+  /* ---------- confetti ---------- */
+
+  function launchConfetti() {
+    if (prefersReduced()) return;
+
+    const ctx = confettiCanvas.getContext("2d");
+    if (!ctx) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    confettiCanvas.width = Math.floor(w * dpr);
+    confettiCanvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const rect = boardEl.getBoundingClientRect();
+    const originX = rect.left + rect.width / 2;
+    const originY = rect.top + rect.height * 0.52;
+    const colors = ["#bf5a35", "#e4b360", "#3f6553", "#f3e5cf", "#79908c", "#8f3f2d"];
+    const particles = [];
+    const count = w < 520 ? 72 : 118;
+
+    for (let i = 0; i < count; i += 1) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 3 + Math.random() * 10;
+      particles.push({
+        x: originX + (Math.random() - 0.5) * rect.width * 0.36,
+        y: originY + (Math.random() - 0.5) * rect.height * 0.18,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 6,
+        w: 4 + Math.random() * 7,
+        h: 3 + Math.random() * 8,
+        rot: Math.random() * Math.PI,
+        vr: (Math.random() - 0.5) * 0.34,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        life: 1
+      });
+    }
+
+    const start = performance.now();
+    if (confettiFrame) cancelAnimationFrame(confettiFrame);
+
+    function frame(now) {
+      const age = now - start;
+      ctx.clearRect(0, 0, w, h);
+
+      for (const p of particles) {
+        p.vy += 0.24;
+        p.vx *= 0.992;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vr;
+        p.life = Math.max(0, 1 - age / 3600);
+
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, p.life * 1.8);
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      }
+
+      if (age < 3800) {
+        confettiFrame = requestAnimationFrame(frame);
+      } else {
+        ctx.clearRect(0, 0, w, h);
+        confettiFrame = 0;
+      }
+    }
+
+    confettiFrame = requestAnimationFrame(frame);
+  }
+
+  /* ---------- wire up ---------- */
+
+  function openFilePicker() {
+    fileInput.click();
+  }
+
+  function init() {
+    buildTiles();
+    refreshBest();
+
+    const artwork = makeDefaultArtwork();
+    applyImage(artwork);
+
+    resetRound({ animate: false });
+    renderPositions(false);
+
+    document.getElementById("uploadBtn").addEventListener("click", openFilePicker);
+    document.getElementById("changeBtn").addEventListener("click", openFilePicker);
+    document.getElementById("changeWinBtn").addEventListener("click", openFilePicker);
+    document.getElementById("peekBtn").addEventListener("click", openPeek);
+    document.getElementById("closePeekBtn").addEventListener("click", closePeek);
+    document.getElementById("shuffleBtn").addEventListener("click", () => {
+      closePeek();
+      resetRound({ animate: true });
+    });
+    document.getElementById("againBtn").addEventListener("click", () => {
+      resetRound({ animate: true });
+      document.getElementById("shuffleBtn").focus({ preventScroll: true });
+    });
+
+    peekView.addEventListener("click", (event) => {
+      if (event.target.closest("[data-close]") || event.target === peekView) {
+        closePeek();
+      }
+    });
+    // The backdrop itself is the dialog; a click anywhere outside the card closes it.
+    peekView.addEventListener("pointerdown", (event) => {
+      if (!event.target.closest(".peek-card")) closePeek();
+    });
+
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files && fileInput.files[0];
+      fileInput.value = "";
+      if (file) useFile(file);
+    });
+
+    ["dragenter", "dragover"].forEach((type) => {
+      window.addEventListener(type, (event) => {
+        if (!hasFiles(event)) return;
+        event.preventDefault();
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+        boardFrame.classList.add("drag-over");
+      });
+    });
+
+    window.addEventListener("dragleave", (event) => {
+      if (event.relatedTarget === null) boardFrame.classList.remove("drag-over");
+    });
+
+    window.addEventListener("drop", (event) => {
+      if (!hasFiles(event)) return;
+      event.preventDefault();
+      boardFrame.classList.remove("drag-over");
+      handleDroppedFile(event);
+    });
+
+    window.addEventListener("paste", (event) => {
+      const items = event.clipboardData && event.clipboardData.items;
+      if (!items) return;
+      const item = Array.from(items).find((it) => it.type && it.type.startsWith("image/"));
+      if (!item) return;
+      event.preventDefault();
+      const file = item.getAsFile();
+      if (file) useFile(file);
+    });
+
+    document.addEventListener("keydown", onKeyDown);
+
+    const resizeObserver = new ResizeObserver(() => {
+      boardEl.classList.add("no-anim");
+      renderPositions(false);
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => boardEl.classList.remove("no-anim"), 100);
+    });
+    resizeObserver.observe(boardEl);
+
+    window.addEventListener("resize", () => {
+      if (confettiFrame) {
+        cancelAnimationFrame(confettiFrame);
+        confettiFrame = 0;
+        const ctx = confettiCanvas.getContext("2d");
+        if (ctx) ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+      }
+    });
+
+    requestAnimationFrame(() => {
+      boardEl.classList.add("no-anim");
+      renderPositions(false);
+    });
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("debug")) {
+      window.__puzzleDebug = {
+        getState() {
+          return {
+            board: game.board.slice(),
+            moves: game.moves,
+            started: game.started,
+            won: game.won,
+            imageName: game.imageName
+          };
+        },
+        setBoard(next) {
+          if (!Array.isArray(next) || next.length !== 9) return false;
+          if (!next.every((n) => Number.isInteger(n) && n >= 0 && n <= 8)) return false;
+          resetRound({ animate: false });
+          game.board = next.slice();
+          renderAll(false);
+          return true;
+        },
+        shuffle() {
+          resetRound({ animate: false });
+        }
+      };
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
