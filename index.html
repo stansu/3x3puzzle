@@ -433,6 +433,55 @@ a {
   animation: denied 0.38s ease;
 }
 
+.tile.hint {
+  z-index: 4;
+  animation: hintPulse 1.5s ease-in-out infinite;
+  box-shadow:
+    0 0 0 2px rgba(244, 211, 156, 0.95),
+    0 0 26px rgba(244, 211, 156, 0.55);
+}
+
+@keyframes hintPulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.22);
+  }
+}
+
+.ghost {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  width: 50px;
+  height: 50px;
+  border-radius: 3px;
+  background-repeat: no-repeat;
+  background-size: 300% 300%;
+  box-shadow:
+    0 0 0 2px rgba(244, 211, 156, 0.8),
+    inset 0 0 22px rgba(244, 211, 156, 0.35);
+  opacity: 0.32;
+  pointer-events: none;
+  animation: ghostPulse 1.6s ease-in-out infinite;
+  transition:
+    transform 0.23s cubic-bezier(0.22, 0.78, 0.24, 1),
+    opacity 0.2s ease;
+}
+
+@keyframes ghostPulse {
+  0%,
+  100% {
+    opacity: 0.34;
+  }
+  50% {
+    opacity: 0.66;
+  }
+}
+
 @keyframes denied {
   0%,
   100% {
@@ -480,7 +529,8 @@ a {
 }
 
 .board.no-anim .tile,
-.board.no-anim .blank {
+.board.no-anim .blank,
+.board.no-anim .ghost {
   transition: none !important;
 }
 
@@ -852,6 +902,89 @@ kbd {
   opacity: 0.8;
 }
 
+/* ---------- tutorial / hint / solution ---------- */
+
+.helpers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.helper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 9px 8px;
+  color: var(--ink-soft);
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.helper svg {
+  flex: 0 0 auto;
+  opacity: 0.7;
+}
+
+.helper:hover {
+  color: var(--accent-dark);
+  background: #fffdf8;
+  border-color: rgba(191, 90, 53, 0.42);
+}
+
+.helper:active {
+  transform: translateY(1px);
+}
+
+.helper.is-on {
+  color: #fbf5e9;
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+}
+
+.helper.is-on svg {
+  opacity: 0.95;
+}
+
+.solver-note {
+  margin: 9px 0 0;
+  padding: 9px 11px;
+  color: var(--ink-soft);
+  background: rgba(228, 179, 96, 0.13);
+  border: 1px solid rgba(174, 143, 93, 0.28);
+  border-radius: 9px;
+  font-size: 10.5px;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+}
+
+.solver-note b {
+  color: var(--accent-dark);
+  font-weight: 650;
+}
+
+.assist {
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  color: rgba(251, 245, 233, 0.72);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+}
+
 .thumb-row {
   display: flex;
   align-items: center;
@@ -971,7 +1104,7 @@ kbd {
   }
 }
 
-body.peek-open {
+body.modal-open {
   overflow: hidden;
 }
 
@@ -1051,6 +1184,327 @@ body.peek-open {
   font-size: 10px;
   letter-spacing: 0.08em;
   text-align: center;
+}
+
+/* ---------- guide + solution sheets ---------- */
+
+.guide-card,
+.solution-card {
+  width: min(92vw, 620px, calc(94dvh - 44px));
+  max-height: calc(94dvh - 44px);
+  gap: 13px;
+  padding: 18px clamp(16px, 3vw, 24px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  background: rgba(26, 21, 16, 0.95);
+  box-shadow: 0 30px 80px -24px rgba(0, 0, 0, 0.82);
+}
+
+.guide-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-right: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(244, 211, 156, 0.32) transparent;
+}
+
+.guide-body::-webkit-scrollbar,
+.solution-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.guide-body::-webkit-scrollbar-thumb,
+.solution-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(244, 211, 156, 0.28);
+}
+
+.guide-body::-webkit-scrollbar-track,
+.solution-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.guide-lede {
+  margin: 0 0 12px;
+  color: rgba(247, 240, 228, 0.62);
+  font-size: 11.5px;
+  line-height: 1.85;
+  letter-spacing: 0.02em;
+}
+
+.guide-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guide-steps li {
+  padding: 11px 11px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.guide-steps b {
+  display: block;
+  margin: 0 0 5px;
+  color: #f8f1e5;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+}
+
+.guide-steps p {
+  margin: 0;
+  color: rgba(247, 240, 228, 0.58);
+  font-size: 10.5px;
+  line-height: 1.7;
+}
+
+.guide-step-no {
+  display: inline-grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  margin-bottom: 8px;
+  border-radius: 50%;
+  color: #fff7ec;
+  background: var(--accent);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.guide-section {
+  margin-top: 17px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.guide-section h3 {
+  margin: 0 0 10px;
+  color: #f8f1e5;
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.strategy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.order-map {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(3, 33px);
+  grid-auto-rows: 33px;
+  gap: 3px;
+  padding: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.order-map span {
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.order-map .p1 {
+  color: #fff8ed;
+  background: rgba(191, 90, 53, 0.86);
+}
+
+.order-map .p2 {
+  color: #eef6f0;
+  background: rgba(63, 101, 83, 0.92);
+}
+
+.order-map .p3 {
+  color: #f4dcb2;
+  background: rgba(228, 179, 96, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(228, 179, 96, 0.34);
+}
+
+.order-map .blank {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.08) 0 3px,
+    transparent 3px 7px
+  );
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.strategy-list {
+  flex: 1 1 220px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: strat;
+}
+
+.strategy-list li {
+  position: relative;
+  padding: 0 0 9px 22px;
+  color: rgba(247, 240, 228, 0.66);
+  font-size: 10.5px;
+  line-height: 1.75;
+}
+
+.strategy-list li:last-child {
+  padding-bottom: 0;
+}
+
+.strategy-list li::before {
+  position: absolute;
+  top: 1px;
+  left: 0;
+  width: 15px;
+  height: 15px;
+  border: 1px solid rgba(244, 211, 156, 0.45);
+  border-radius: 50%;
+  color: #f4d39c;
+  content: counter(strat);
+  counter-increment: strat;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  line-height: 13px;
+  text-align: center;
+}
+
+.strategy-list b {
+  color: #f8f1e5;
+  font-weight: 600;
+}
+
+.guide-tips {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guide-tips li {
+  position: relative;
+  padding-left: 14px;
+  color: rgba(247, 240, 228, 0.64);
+  font-size: 10.5px;
+  line-height: 1.78;
+}
+
+.guide-tips li + li {
+  margin-top: 6px;
+}
+
+.guide-tips li::before {
+  position: absolute;
+  top: 0.62em;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(244, 211, 156, 0.7);
+  content: "";
+}
+
+.guide-foot {
+  margin: 15px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  color: rgba(247, 240, 228, 0.42);
+  font-size: 9.5px;
+  letter-spacing: 0.03em;
+}
+
+.guide-actions,
+.solution-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.solution-list {
+  display: grid;
+  gap: 4px;
+  max-height: min(46dvh, 340px);
+  margin: 0;
+  padding: 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(244, 211, 156, 0.32) transparent;
+}
+
+.solution-list li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 9px 5px 7px;
+  border-radius: 8px;
+  color: rgba(247, 240, 228, 0.7);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.solution-list li.now {
+  color: #fff8ed;
+  background: rgba(191, 90, 53, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(244, 211, 156, 0.34);
+}
+
+.step-no {
+  flex: 0 0 auto;
+  width: 17px;
+  color: rgba(247, 240, 228, 0.45);
+  font-family: var(--mono);
+  font-size: 9px;
+  text-align: right;
+}
+
+.step-thumb {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  background-repeat: no-repeat;
+  background-size: 300% 300%;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.step-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-dir {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: #f4d39c;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.solution-empty {
+  margin: 0;
+  color: rgba(247, 240, 228, 0.6);
+  font-size: 11.5px;
+  line-height: 1.8;
 }
 
 /* ---------- toast + confetti ---------- */
@@ -1228,6 +1682,23 @@ body.peek-open {
   .record {
     font-size: 8px;
   }
+
+  .helper {
+    gap: 5px;
+    min-height: 38px;
+    padding: 8px 4px;
+    font-size: 10px;
+    letter-spacing: 0.02em;
+  }
+
+  .helper svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .solver-note {
+    font-size: 10px;
+  }
 }
 
 @media (max-height: 700px) and (max-width: 900px) {
@@ -1261,6 +1732,48 @@ body.peek-open {
     min-height: 43px;
     margin-top: 10px;
     padding: 11px 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .guide-steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .guide-steps li {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+    column-gap: 9px;
+    align-items: start;
+    padding: 10px 11px;
+  }
+
+  .guide-step-no {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    width: 18px;
+    height: 18px;
+    margin: 1px 0 0;
+  }
+
+  .guide-steps b {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0 0 3px;
+  }
+
+  .guide-steps p {
+    grid-column: 2;
+    grid-row: 2;
+    font-size: 10.5px;
+  }
+
+  .strategy {
+    gap: 12px;
+  }
+
+  .solution-list {
+    max-height: 40dvh;
   }
 }
 
@@ -1317,6 +1830,7 @@ body.peek-open {
         <div class="board-frame" id="boardFrame">
           <div class="board" id="board" aria-label="滑動拼圖，空白格旁的拼圖可以滑入">
             <div class="blank" id="blank" aria-hidden="true"></div>
+            <div class="ghost" id="ghost" aria-hidden="true" hidden></div>
             <div class="win-layer" id="winLayer" hidden>
               <div class="win-content">
                 <p class="win-kicker">COMPLETE</p>
@@ -1326,6 +1840,7 @@ body.peek-open {
                   <span class="sep" aria-hidden="true">·</span>
                   <span id="winTime">00:00</span>
                   <span class="record" id="winRecord" hidden>新紀錄</span>
+                  <span class="assist" id="winAssist" hidden>用了提示</span>
                 </p>
                 <div class="win-actions">
                   <button class="btn btn-light" id="againBtn" type="button">再玩一次</button>
@@ -1383,6 +1898,32 @@ body.peek-open {
         <span>重新打亂</span>
       </button>
 
+      <div class="helpers" role="group" aria-label="教學與解法">
+        <button class="helper" id="guideBtn" type="button" aria-label="開啟玩法教學">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M9.5 9.4a2.6 2.6 0 1 1 3.4 2.4c-.7.3-1 .9-1 1.6v.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <circle cx="12" cy="16.9" r="1" fill="currentColor"/>
+          </svg>
+          <span>玩法教學</span>
+        </button>
+        <button class="helper" id="hintBtn" type="button" aria-label="提示下一步">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9.4 17.2h5.2M10.2 20h3.6M12 3.2a6 6 0 0 0-3.4 10.9c.5.4.8 1 .8 1.6v.5h5.2v-.5c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3.2Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>提示一步</span>
+        </button>
+        <button class="helper" id="solutionBtn" type="button" aria-label="查看解法">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 4.2v5a3 3 0 0 0 3 3h6a3 3 0 0 1 3 3v4.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <circle cx="6" cy="3.8" r="1.7" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="18" cy="20.2" r="1.7" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <span>看解法</span>
+        </button>
+      </div>
+      <p class="solver-note" id="solverNote" hidden></p>
+
       <div class="thumb-row">
         <span class="thumb"><img id="thumbImg" alt="" /></span>
         <span class="thumb-copy">
@@ -1419,6 +1960,94 @@ body.peek-open {
   </div>
 </div>
 
+<div class="peek" id="guideView" hidden role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+  <div class="peek-card guide-card">
+    <div class="peek-head">
+      <span id="guideTitle">玩法教學 · HOW TO PLAY</span>
+      <button class="peek-close" id="closeGuideBtn" type="button" aria-label="關閉教學">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="guide-body">
+      <p class="guide-lede">
+        把九塊拼圖滑回原位，讓照片重新完整。八塊歸位就算完成，計時從第一次移動開始。
+      </p>
+
+      <ol class="guide-steps">
+        <li>
+          <span class="guide-step-no" aria-hidden="true">1</span>
+          <b>選一張照片</b>
+          <p>上傳手機相簿或電腦裡的照片，也可以直接用預設的「暮色山稜」。</p>
+        </li>
+        <li>
+          <span class="guide-step-no" aria-hidden="true">2</span>
+          <b>滑動拼圖</b>
+          <p>點一下空格旁邊的拼圖，或往想移動的方向滑動、按方向鍵。</p>
+        </li>
+        <li>
+          <span class="guide-step-no" aria-hidden="true">3</span>
+          <b>拼回完整</b>
+          <p>八塊都回到原位就完成，時間會存成這台裝置的最佳紀錄。</p>
+        </li>
+      </ol>
+
+      <section class="guide-section">
+        <h3>解法：從上排開始，一層一層收</h3>
+        <div class="strategy">
+          <div class="order-map" aria-hidden="true">
+            <span class="p1">1</span><span class="p1">2</span><span class="p1">3</span>
+            <span class="p2">4</span><span class="p3">↻</span><span class="p3">↻</span>
+            <span class="p2">5</span><span class="p3">↻</span><span class="blank"></span>
+          </div>
+          <ol class="strategy-list">
+            <li><b>先排上排三塊。</b>左上 → 中上 → 右上，排好之後就不要再把它們移開。</li>
+            <li><b>再排左直行兩塊。</b>左中 → 左下，同樣放好就固定住。</li>
+            <li><b>最後 2×2 轉一圈。</b>把空白繞著剩下的三塊轉，它們就會自己歸位。</li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="guide-section">
+        <h3>卡住的時候</h3>
+        <ul class="guide-tips">
+          <li>按「看原圖」記住角落的顏色與線條，先從特徵明顯的邊角下手。</li>
+          <li>一次只追一塊：先把目標塊帶到目標位置的旁邊，再推進去。</li>
+          <li>按「提示一步」讓電腦指出下一步；按「看解法」能看到最短路徑，也能自動示範。</li>
+        </ul>
+      </section>
+
+      <p class="guide-foot">用了提示的這一局不會列入最佳紀錄，計時與步數照常計算。</p>
+    </div>
+
+    <div class="guide-actions">
+      <button class="btn btn-light" id="guidePlayBtn" type="button">開始拼</button>
+      <button class="btn btn-outline-light" id="guideHintBtn" type="button">提示一步</button>
+    </div>
+  </div>
+</div>
+
+<div class="peek" id="solutionView" hidden role="dialog" aria-modal="true" aria-labelledby="solutionTitle">
+  <div class="peek-card solution-card">
+    <div class="peek-head">
+      <span id="solutionTitle">解法 · SOLUTION</span>
+      <button class="peek-close" id="closeSolutionBtn" type="button" aria-label="關閉解法">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <p class="guide-lede" id="solutionLede">正在計算最短路徑…</p>
+    <ol class="solution-list" id="solutionList"></ol>
+    <div class="solution-actions">
+      <button class="btn btn-light" id="autoSolveBtn" type="button">自動示範</button>
+      <button class="btn btn-outline-light" id="solutionDismissBtn" type="button">我自己來</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <p class="sr-only" id="live" aria-live="polite"></p>
 <canvas id="confetti" aria-hidden="true"></canvas>
@@ -1431,7 +2060,9 @@ body.peek-open {
   const BLANK = 8;
   const PIECES = 8;
   const BEST_KEY = "photo-puzzle-best-v1";
+  const GUIDE_KEY = "photo-puzzle-guide-seen-v1";
   const IMAGE_SIZE = 1200;
+  const AUTO_STEP_MS = 430;
 
   const boardEl = document.getElementById("board");
   const blankEl = document.getElementById("blank");
@@ -1457,6 +2088,14 @@ body.peek-open {
   const toastEl = document.getElementById("toast");
   const liveEl = document.getElementById("live");
   const confettiCanvas = document.getElementById("confetti");
+  const ghost = document.getElementById("ghost");
+  const guideView = document.getElementById("guideView");
+  const solutionView = document.getElementById("solutionView");
+  const solutionList = document.getElementById("solutionList");
+  const solutionLede = document.getElementById("solutionLede");
+  const solutionBtn = document.getElementById("solutionBtn");
+  const solverNote = document.getElementById("solverNote");
+  const winAssistEl = document.getElementById("winAssist");
 
   const tiles = [];
 
@@ -1475,9 +2114,12 @@ body.peek-open {
     shuffleTimer: 0,
     toastTimer: 0,
     uploadSeq: 0,
-    peekOpen: false,
     suppressClick: false,
-    lastFocus: null
+    assisted: false,
+    hintTimer: 0,
+    autoQueue: null,
+    autoTimer: 0,
+    autoToken: 0
   };
 
   let swipeStart = null;
@@ -1526,6 +2168,175 @@ body.peek-open {
     const br = Math.floor(b / SIZE);
     const bc = b % SIZE;
     return Math.abs(ar - br) + Math.abs(ac - bc) === 1;
+  }
+
+  /* ---------- solver (A* with Manhattan distance) ---------- */
+
+  const GOAL_KEY = "012345678";
+  const DIR_LABEL = { up: "上", down: "下", left: "左", right: "右" };
+  const DIR_ARROW = { up: "↑", down: "↓", left: "←", right: "→" };
+
+  // Manhattan distance from every piece to every cell (piece value === goal cell).
+  const MANHATTAN = (() => {
+    const table = [];
+    for (let piece = 0; piece < SIZE * SIZE; piece += 1) {
+      table[piece] = [];
+      for (let cell = 0; cell < SIZE * SIZE; cell += 1) {
+        table[piece][cell] =
+          Math.abs(Math.floor(piece / SIZE) - Math.floor(cell / SIZE)) +
+          Math.abs((piece % SIZE) - (cell % SIZE));
+      }
+    }
+    return table;
+  })();
+
+  class MinHeap {
+    constructor() {
+      this.items = [];
+    }
+
+    get size() {
+      return this.items.length;
+    }
+
+    push(node) {
+      const items = this.items;
+      items.push(node);
+      let index = items.length - 1;
+      while (index > 0) {
+        const parent = (index - 1) >> 1;
+        if (items[parent].f <= items[index].f) break;
+        [items[parent], items[index]] = [items[index], items[parent]];
+        index = parent;
+      }
+    }
+
+    pop() {
+      const items = this.items;
+      const top = items[0];
+      const last = items.pop();
+      if (items.length) {
+        items[0] = last;
+        let index = 0;
+        for (;;) {
+          const left = index * 2 + 1;
+          const right = left + 1;
+          let smallest = index;
+          if (left < items.length && items[left].f < items[smallest].f) smallest = left;
+          if (right < items.length && items[right].f < items[smallest].f) smallest = right;
+          if (smallest === index) break;
+          [items[smallest], items[index]] = [items[index], items[smallest]];
+          index = smallest;
+        }
+      }
+      return top;
+    }
+  }
+
+  function inversionCount(board) {
+    const pieces = board.filter((piece) => piece !== BLANK);
+    let count = 0;
+    for (let i = 0; i < pieces.length; i += 1) {
+      for (let j = i + 1; j < pieces.length; j += 1) {
+        if (pieces[i] > pieces[j]) count += 1;
+      }
+    }
+    return count;
+  }
+
+  // Odd width boards are solvable exactly when the inversion count is even.
+  function isSolvable(board) {
+    return inversionCount(board) % 2 === 0;
+  }
+
+  function manhattan(cells) {
+    let distance = 0;
+    for (let cell = 0; cell < cells.length; cell += 1) {
+      const piece = cells[cell];
+      if (piece !== BLANK) distance += MANHATTAN[piece][cell];
+    }
+    return distance;
+  }
+
+  // Returns the pieces to slide in order ([] when solved, null when unsolvable).
+  function solvePuzzle(start) {
+    if (!isSolvable(start)) return null;
+
+    const startKey = start.join("");
+    if (startKey === GOAL_KEY) return [];
+
+    const heap = new MinHeap();
+    const best = new Map();
+    const root = {
+      cells: Uint8Array.from(start),
+      blank: start.indexOf(BLANK),
+      g: 0,
+      f: manhattan(start),
+      parent: null,
+      moved: -1
+    };
+    heap.push(root);
+    best.set(startKey, 0);
+
+    let expanded = 0;
+
+    while (heap.size) {
+      const node = heap.pop();
+      const key = node.cells.join("");
+      if (node.g > best.get(key)) continue;
+
+      if (key === GOAL_KEY) {
+        const path = [];
+        let cursor = node;
+        while (cursor.parent) {
+          path.push(cursor.moved);
+          cursor = cursor.parent;
+        }
+        return path.reverse();
+      }
+
+      expanded += 1;
+      if (expanded > 400000) return null;
+
+      for (const next of neighborsOf(node.blank)) {
+        const cells = node.cells.slice();
+        const moved = cells[next];
+        cells[next] = cells[node.blank];
+        cells[node.blank] = moved;
+
+        const nextKey = cells.join("");
+        const g = node.g + 1;
+        const known = best.get(nextKey);
+        if (known !== undefined && known <= g) continue;
+
+        best.set(nextKey, g);
+        heap.push({ cells, blank: next, g, f: g + manhattan(cells), parent: node, moved });
+      }
+    }
+
+    return null;
+  }
+
+  function describePath(startBoard, pieces) {
+    const board = startBoard.slice();
+    const steps = [];
+
+    for (const piece of pieces) {
+      const from = board.indexOf(piece);
+      const blank = board.indexOf(BLANK);
+      if (from < 0 || blank < 0) break;
+
+      const rowDelta = Math.floor(blank / SIZE) - Math.floor(from / SIZE);
+      const colDelta = (blank % SIZE) - (from % SIZE);
+      const dir =
+        rowDelta === -1 ? "up" : rowDelta === 1 ? "down" : colDelta === -1 ? "left" : "right";
+
+      board[blank] = piece;
+      board[from] = BLANK;
+      steps.push({ piece, dir, from, to: blank });
+    }
+
+    return steps;
   }
 
   /* ---------- default artwork ---------- */
@@ -1873,12 +2684,16 @@ body.peek-open {
   function resetRound({ animate = true } = {}) {
     window.clearTimeout(game.shuffleTimer);
     stopTimer();
+    stopAutoSolve(true);
+    clearHint();
+    solverNote.hidden = true;
     game.roundId += 1;
     game.busy = true;
     game.moves = 0;
     game.started = false;
     game.won = false;
     game.elapsed = 0;
+    game.assisted = false;
     game.suppressClick = false;
     game.board = randomSolvableBoard();
 
@@ -1909,6 +2724,7 @@ body.peek-open {
     const blankIndex = game.board.indexOf(BLANK);
     if (!isAdjacent(index, blankIndex)) return false;
 
+    clearHint();
     [game.board[blankIndex], game.board[index]] = [game.board[index], game.board[blankIndex]];
 
     if (!game.started) {
@@ -1940,6 +2756,10 @@ body.peek-open {
   }
 
   function moveDirection(direction) {
+    if (game.autoQueue) {
+      stopAutoSolve();
+      return;
+    }
     if (game.busy || game.won) return;
     const blank = game.board.indexOf(BLANK);
     const row = Math.floor(blank / SIZE);
@@ -1978,13 +2798,17 @@ body.peek-open {
     winTimeEl.textContent = formatTime(game.elapsed);
     winLayer.style.backgroundImage = `url("${game.imageUrl}")`;
 
+    clearHint();
+    solverNote.hidden = true;
+
     const previousBest = getBest();
-    const isRecord = previousBest === null || game.elapsed < previousBest;
+    const isRecord = !game.assisted && (previousBest === null || game.elapsed < previousBest);
     if (isRecord) {
       saveBest(game.elapsed);
       refreshBest();
     }
     winRecordEl.hidden = !isRecord;
+    winAssistEl.hidden = !game.assisted;
 
     for (const tile of tiles) tile.tabIndex = -1;
 
@@ -2032,6 +2856,10 @@ body.peek-open {
       game.suppressClick = false;
       return;
     }
+    if (game.autoQueue) {
+      stopAutoSolve();
+      return;
+    }
     const tile = event.target.closest(".tile");
     if (!tile) return;
     if (game.won) return;
@@ -2039,6 +2867,10 @@ body.peek-open {
   }
 
   function onPointerDown(event) {
+    if (game.autoQueue) {
+      stopAutoSolve();
+      return;
+    }
     if (!event.isPrimary || game.busy || game.won) return;
     if (event.target.closest(".win-layer")) return;
     swipeStart = {
@@ -2077,8 +2909,8 @@ body.peek-open {
   }
 
   function onKeyDown(event) {
-    if (game.peekOpen) {
-      if (event.key === "Escape") closePeek();
+    if (isModalOpen()) {
+      if (event.key === "Escape") closeAllModals();
       return;
     }
 
@@ -2098,25 +2930,281 @@ body.peek-open {
     moveDirection(direction);
   }
 
-  /* ---------- preview ---------- */
+  /* ---------- modals / preview / guide ---------- */
+
+  let lastModalFocus = null;
+
+  function isModalOpen() {
+    return !peekView.hidden || !guideView.hidden || !solutionView.hidden;
+  }
+
+  function openModal(view, focusEl) {
+    if (!view.hidden) return;
+    if (!isModalOpen()) lastModalFocus = document.activeElement;
+    view.hidden = false;
+    document.body.classList.add("modal-open");
+    const target = focusEl || view.querySelector(".peek-close");
+    if (target && typeof target.focus === "function") {
+      target.focus({ preventScroll: true });
+    }
+  }
+
+  function closeModal(view) {
+    if (view.hidden) return;
+    view.hidden = true;
+    if (isModalOpen()) return;
+    document.body.classList.remove("modal-open");
+    const target = lastModalFocus;
+    lastModalFocus = null;
+    if (target && typeof target.focus === "function") target.focus({ preventScroll: true });
+  }
+
+  function closeAllModals() {
+    closeModal(peekView);
+    closeModal(guideView);
+    closeModal(solutionView);
+  }
 
   function openPeek() {
-    if (game.peekOpen) return;
-    game.peekOpen = true;
-    game.lastFocus = document.activeElement;
-    peekView.hidden = false;
-    document.body.classList.add("peek-open");
-    document.getElementById("closePeekBtn").focus({ preventScroll: true });
+    if (game.autoQueue) stopAutoSolve(true);
+    openModal(peekView, document.getElementById("closePeekBtn"));
   }
 
   function closePeek() {
-    if (!game.peekOpen) return;
-    game.peekOpen = false;
-    peekView.hidden = true;
-    document.body.classList.remove("peek-open");
-    if (game.lastFocus && typeof game.lastFocus.focus === "function") {
-      game.lastFocus.focus({ preventScroll: true });
+    closeModal(peekView);
+  }
+
+  function hasSeenGuide() {
+    try {
+      return window.localStorage.getItem(GUIDE_KEY) === "1";
+    } catch {
+      return true;
     }
+  }
+
+  function markGuideSeen() {
+    try {
+      window.localStorage.setItem(GUIDE_KEY, "1");
+    } catch {
+      /* private mode */
+    }
+  }
+
+  function openGuide() {
+    if (game.autoQueue) stopAutoSolve(true);
+    closeModal(peekView);
+    closeModal(solutionView);
+    markGuideSeen();
+    openModal(guideView, document.getElementById("guidePlayBtn"));
+  }
+
+  function closeGuide() {
+    closeModal(guideView);
+  }
+
+  function closeSolution() {
+    closeModal(solutionView);
+  }
+
+  /* ---------- hints ---------- */
+
+  function clearHint() {
+    window.clearTimeout(game.hintTimer);
+    game.hintTimer = 0;
+    ghost.hidden = true;
+    for (const tile of tiles) tile.classList.remove("hint");
+  }
+
+  function showHintMarker(piece) {
+    const from = game.board.indexOf(piece);
+    const blank = game.board.indexOf(BLANK);
+    if (from < 0 || blank < 0) return;
+
+    const { size, step } = tileSize();
+    ghost.style.width = `${size}px`;
+    ghost.style.height = `${size}px`;
+    ghost.style.backgroundImage = `url("${game.imageUrl}")`;
+    ghost.style.backgroundPosition = `${(piece % SIZE) * 50}% ${Math.floor(piece / SIZE) * 50}%`;
+    ghost.style.transform = `translate3d(${(blank % SIZE) * step}px, ${Math.floor(blank / SIZE) * step}px, 0)`;
+    ghost.hidden = false;
+
+    for (const tile of tiles) {
+      tile.classList.toggle("hint", Number(tile.dataset.piece) === piece);
+    }
+
+    window.clearTimeout(game.hintTimer);
+    game.hintTimer = window.setTimeout(clearHint, 7000);
+  }
+
+  function useHintNote(message) {
+    solverNote.textContent = message;
+    solverNote.hidden = false;
+  }
+
+  function giveHint() {
+    if (game.won) {
+      showToast("已經拼好了，欣賞一下完整畫面");
+      return;
+    }
+    if (game.busy) return;
+
+    const path = solvePuzzle(game.board.slice());
+    if (!path) {
+      showToast("這個盤面接不回去，重新打亂一次吧", true);
+      return;
+    }
+    if (!path.length) return;
+
+    if (game.autoQueue) stopAutoSolve(true);
+    game.assisted = true;
+
+    const next = describePath(game.board.slice(), path)[0];
+    showHintMarker(next.piece);
+    useHintNote(
+      `提示：把第 ${next.piece + 1} 塊往${DIR_LABEL[next.dir]}滑 · 最短還需 ${path.length} 步 · 此局不計最佳紀錄`
+    );
+    liveEl.textContent = `提示：把第 ${next.piece + 1} 塊往${DIR_LABEL[next.dir]}滑，還需要 ${path.length} 步。`;
+  }
+
+  /* ---------- solution sheet ---------- */
+
+  function renderSolutionSteps(steps) {
+    solutionList.textContent = "";
+
+    steps.forEach((step, index) => {
+      const item = document.createElement("li");
+      item.dataset.step = String(index);
+
+      const no = document.createElement("span");
+      no.className = "step-no";
+      no.textContent = String(index + 1);
+
+      const thumb = document.createElement("i");
+      thumb.className = "step-thumb";
+      thumb.style.backgroundImage = `url("${game.imageUrl}")`;
+      thumb.style.backgroundPosition = `${(step.piece % SIZE) * 50}% ${Math.floor(step.piece / SIZE) * 50}%`;
+
+      const text = document.createElement("span");
+      text.className = "step-text";
+      text.textContent = `第 ${step.piece + 1} 塊往${DIR_LABEL[step.dir]}滑`;
+
+      const dir = document.createElement("span");
+      dir.className = "step-dir";
+      dir.textContent = DIR_ARROW[step.dir];
+
+      item.append(no, thumb, text, dir);
+      solutionList.append(item);
+    });
+  }
+
+  function openSolution() {
+    if (game.autoQueue) {
+      stopAutoSolve();
+      return;
+    }
+    if (game.won) {
+      showToast("已經拼好了，欣賞一下完整畫面");
+      return;
+    }
+    if (game.busy) return;
+
+    const path = solvePuzzle(game.board.slice());
+    if (!path) {
+      showToast("這個盤面接不回去，重新打亂一次吧", true);
+      return;
+    }
+
+    game.assisted = true;
+    clearHint();
+    renderSolutionSteps(describePath(game.board.slice(), path));
+
+    const title = document.getElementById("solutionTitle");
+    if (path.length === 0) {
+      title.textContent = "解法 · 已完成";
+      solutionLede.textContent = "拼圖已經完成，沒有需要移動的步驟。";
+    } else {
+      title.textContent = `解法 · ${path.length} 步`;
+      solutionLede.textContent = `這是電腦算出的最短路徑，還需要 ${path.length} 步。可以照著順序走，或讓電腦示範。`;
+    }
+
+    solutionList.scrollTop = 0;
+    openModal(solutionView, document.getElementById("autoSolveBtn"));
+  }
+
+  /* ---------- auto demo ---------- */
+
+  function setAutoUI(running) {
+    solutionBtn.classList.toggle("is-on", running);
+    const label = solutionBtn.querySelector("span");
+    if (label) label.textContent = running ? "停止示範" : "看解法";
+    solutionBtn.setAttribute("aria-label", running ? "停止自動示範" : "查看解法");
+  }
+
+  function stopAutoSolve(silent = false) {
+    if (!game.autoQueue) return;
+    game.autoQueue = null;
+    game.autoToken += 1;
+    window.clearTimeout(game.autoTimer);
+    setAutoUI(false);
+    if (!silent) showToast("已停止自動示範");
+  }
+
+  function runAutoStep(token) {
+    window.clearTimeout(game.autoTimer);
+    if (token !== game.autoToken || !game.autoQueue) return;
+
+    if (game.won) {
+      game.autoQueue = null;
+      setAutoUI(false);
+      return;
+    }
+
+    if (game.busy) {
+      game.autoTimer = window.setTimeout(() => runAutoStep(token), 120);
+      return;
+    }
+
+    const piece = game.autoQueue.shift();
+    if (!game.autoQueue.length) game.autoQueue = null;
+
+    const index = game.board.indexOf(piece);
+    if (index < 0 || !makeMove(index)) {
+      game.autoQueue = null;
+      setAutoUI(false);
+      return;
+    }
+
+    if (!game.autoQueue) {
+      setAutoUI(false);
+      return;
+    }
+
+    game.autoTimer = window.setTimeout(() => runAutoStep(token), AUTO_STEP_MS);
+  }
+
+  function startAutoSolve() {
+    const path = solvePuzzle(game.board.slice());
+    if (!path) {
+      showToast("這個盤面接不回去，重新打亂一次吧", true);
+      return;
+    }
+    if (!path.length) {
+      showToast("已經拼好了");
+      return;
+    }
+
+    game.assisted = true;
+    clearHint();
+    closeSolution();
+
+    window.clearTimeout(game.autoTimer);
+    game.autoToken += 1;
+    game.autoQueue = path.slice();
+    setAutoUI(true);
+    showToast(`自動示範中，共 ${path.length} 步；按「停止示範」可中止`);
+
+    const token = game.autoToken;
+    game.autoTimer = window.setTimeout(() => runAutoStep(token), 260);
   }
 
   /* ---------- toast ---------- */
@@ -2345,7 +3433,7 @@ body.peek-open {
     document.getElementById("peekBtn").addEventListener("click", openPeek);
     document.getElementById("closePeekBtn").addEventListener("click", closePeek);
     document.getElementById("shuffleBtn").addEventListener("click", () => {
-      closePeek();
+      closeAllModals();
       resetRound({ animate: true });
     });
     document.getElementById("againBtn").addEventListener("click", () => {
@@ -2353,14 +3441,29 @@ body.peek-open {
       document.getElementById("shuffleBtn").focus({ preventScroll: true });
     });
 
-    peekView.addEventListener("click", (event) => {
-      if (event.target.closest("[data-close]") || event.target === peekView) {
-        closePeek();
-      }
+    document.getElementById("guideBtn").addEventListener("click", openGuide);
+    document.getElementById("closeGuideBtn").addEventListener("click", closeGuide);
+    document.getElementById("guidePlayBtn").addEventListener("click", closeGuide);
+    document.getElementById("guideHintBtn").addEventListener("click", () => {
+      closeGuide();
+      giveHint();
     });
+
+    document.getElementById("hintBtn").addEventListener("click", giveHint);
+    solutionBtn.addEventListener("click", openSolution);
+    document.getElementById("closeSolutionBtn").addEventListener("click", closeSolution);
+    document.getElementById("solutionDismissBtn").addEventListener("click", closeSolution);
+    document.getElementById("autoSolveBtn").addEventListener("click", startAutoSolve);
+
     // The backdrop itself is the dialog; a click anywhere outside the card closes it.
-    peekView.addEventListener("pointerdown", (event) => {
-      if (!event.target.closest(".peek-card")) closePeek();
+    [
+      [peekView, closePeek],
+      [guideView, closeGuide],
+      [solutionView, closeSolution]
+    ].forEach(([view, close]) => {
+      view.addEventListener("pointerdown", (event) => {
+        if (!event.target.closest(".peek-card")) close();
+      });
     });
 
     fileInput.addEventListener("change", () => {
@@ -2424,6 +3527,13 @@ body.peek-open {
     });
 
     const params = new URLSearchParams(window.location.search);
+
+    if (!params.has("debug") && !params.has("noguide") && !hasSeenGuide()) {
+      window.setTimeout(() => {
+        if (!isModalOpen() && !game.started) openGuide();
+      }, 750);
+    }
+
     if (params.has("debug")) {
       window.__puzzleDebug = {
         getState() {
@@ -2432,8 +3542,22 @@ body.peek-open {
             moves: game.moves,
             started: game.started,
             won: game.won,
+            assisted: game.assisted,
+            auto: Boolean(game.autoQueue),
             imageName: game.imageName
           };
+        },
+        solve() {
+          return solvePuzzle(game.board.slice());
+        },
+        hint() {
+          giveHint();
+          return solverNote.hidden ? null : solverNote.textContent;
+        },
+        openGuide,
+        openSolution,
+        autoSolve() {
+          startAutoSolve();
         },
         setBoard(next) {
           if (!Array.isArray(next) || next.length !== 9) return false;
