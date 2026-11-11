@@ -117,23 +117,58 @@ git push -u origin main
 └── preview-guide.jpg   # 玩法教學面板預覽圖
 ```
 
+## 流量與遊玩統計
+
+本專案使用 [GoatCounter](https://www.goatcounter.com/) 做匿名統計：**不使用 cookie、不收集個人資料，也不會接觸你選擇的照片**。
+
+- **瀏覽量**：每次開啟頁面時自動記錄（GoatCounter 內建），可看到來源、裝置與熱門頁面。
+- **遊玩事件**：以下行為會以 `event` 形式記錄，可看出大家玩到哪裡、用不用教學。
+
+| 事件 | 觸發時機 |
+| --- | --- |
+| `game-start` | 每局第一次移動 |
+| `game-win` | 完成拼圖 |
+| `game-win-assisted` | 用過提示後完成 |
+| `hint` | 按下「提示一步」 |
+| `solution` | 開啟「看解法」 |
+| `auto-demo` | 按下「自動示範」 |
+| `upload-photo` | 成功上傳照片 |
+| `guide-open` | 開啟玩法教學 |
+
+### 啟用方式
+
+1. 到 [goatcounter.com](https://www.goatcounter.com/) 註冊一個免費帳號。
+2. **Site code** 設為 `3x3puzzle`（對應 `https://3x3puzzle.goatcounter.com`）。
+3. 若使用其他 code，修改 `index.html` 裡的這一行並重新推送：
+
+```js
+const GOATCOUNTER_SITE = "https://<你的 code>.goatcounter.com/count";
+```
+
+4. 之後到 [GoatCounter 後台](https://3x3puzzle.goatcounter.com) 就能看到瀏覽量與事件。
+
+> 在 GoatCounter 建立 site 之前，統計請求會被服務端忽略；註冊後就會開始收到資料。不想統計時，把 `GOATCOUNTER_SITE` 設為空字串即可完全關閉。
+
 ## 隱私
 
 - 選擇的照片只在該裝置的瀏覽器內用 Canvas 處理，不會上傳到 GitHub 或任何伺服器。
 - 請不要把私人照片放進 repo；預設的「暮色山稜」是程式即時繪製的，不含私人圖片。
 - 最佳時間使用 `localStorage` 保存，只存在各自的裝置與瀏覽器中。
+- 流量統計使用 GoatCounter：只送出頁面路徑、事件名稱、來源與裝置資訊，不含照片、檔名或個人資料，也不使用 cookie；在 `file://`、`localhost`、`?debug`、`?nogc` 或按過 GoatCounter 退出鈕的瀏覽器上不會送出。
 
 ## 自訂
 
 - 主色、背景色：修改 `index.html` 裡 `:root` 的 CSS 變數（例如 `--accent`）。
 - 預設圖片：修改 `makeDefaultArtwork()` 函式。
 - 求解器：`solvePuzzle()` 以 A\* 實作，可調整估價函數或搜尋上限。
+- 統計：修改 `GOATCOUNTER_SITE` 常數；設為 `""` 就不再載入 GoatCounter。
 - 若不想公開程式碼，可改用 Cloudflare Pages 或 Netlify 搭配私有 repo；GitHub Pages 免費方案需要公開 repo。
 
 ## 開發者小工具
 
 - `?noguide`：略過第一次開啟時自動顯示的教學。
-- `?debug`：在瀏覽器 console 使用 `window.__puzzleDebug`：
+- `?nogc`：不載入 GoatCounter 統計（單次瀏覽用）。
+- `?debug`：在瀏覽器 console 使用 `window.__puzzleDebug`（同時關閉統計）：
 
 ```js
 __puzzleDebug.getState();          // 目前盤面、步數、是否完成、是否用過提示

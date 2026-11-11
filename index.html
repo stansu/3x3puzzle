@@ -2063,6 +2063,8 @@ body.modal-open {
   const GUIDE_KEY = "photo-puzzle-guide-seen-v1";
   const IMAGE_SIZE = 1200;
   const AUTO_STEP_MS = 430;
+  // GoatCounter: 建一個 site code 為 3x3puzzle 的帳號，或把這行換成你的網址。
+  const GOATCOUNTER_SITE = "https://3x3puzzle.goatcounter.com/count";
 
   const boardEl = document.getElementById("board");
   const blankEl = document.getElementById("blank");
@@ -2719,7 +2721,7 @@ body.modal-open {
     }
   }
 
-  function makeMove(index) {
+  function makeMove(index, viaAuto = false) {
     if (game.busy || game.won) return false;
     const blankIndex = game.board.indexOf(BLANK);
     if (!isAdjacent(index, blankIndex)) return false;
@@ -2730,6 +2732,7 @@ body.modal-open {
     if (!game.started) {
       game.started = true;
       startTimer();
+      if (!viaAuto) trackEvent("game-start", "開始遊玩");
     }
 
     game.moves += 1;
@@ -2809,6 +2812,10 @@ body.modal-open {
     }
     winRecordEl.hidden = !isRecord;
     winAssistEl.hidden = !game.assisted;
+    trackEvent(
+      game.assisted ? "game-win-assisted" : "game-win",
+      game.assisted ? "完成拼圖（用過提示）" : "完成拼圖"
+    );
 
     for (const tile of tiles) tile.tabIndex = -1;
 
@@ -2995,6 +3002,7 @@ body.modal-open {
     closeModal(peekView);
     closeModal(solutionView);
     markGuideSeen();
+    trackEvent("guide-open", "開啟玩法教學");
     openModal(guideView, document.getElementById("guidePlayBtn"));
   }
 
@@ -3057,6 +3065,7 @@ body.modal-open {
 
     if (game.autoQueue) stopAutoSolve(true);
     game.assisted = true;
+    trackEvent("hint", "使用提示");
 
     const next = describePath(game.board.slice(), path)[0];
     showHintMarker(next.piece);
@@ -3115,6 +3124,7 @@ body.modal-open {
     }
 
     game.assisted = true;
+    trackEvent("solution", "查看解法");
     clearHint();
     renderSolutionSteps(describePath(game.board.slice(), path));
 
@@ -3168,7 +3178,7 @@ body.modal-open {
     if (!game.autoQueue.length) game.autoQueue = null;
 
     const index = game.board.indexOf(piece);
-    if (index < 0 || !makeMove(index)) {
+    if (index < 0 || !makeMove(index, true)) {
       game.autoQueue = null;
       setAutoUI(false);
       return;
@@ -3194,6 +3204,7 @@ body.modal-open {
     }
 
     game.assisted = true;
+    trackEvent("auto-demo", "自動示範");
     clearHint();
     closeSolution();
 
@@ -3205,6 +3216,63 @@ body.modal-open {
 
     const token = game.autoToken;
     game.autoTimer = window.setTimeout(() => runAutoStep(token), 260);
+  }
+
+  /* ---------- analytics (GoatCounter, cookie-free) ---------- */
+
+  const analytics = {
+    enabled: false,
+    queue: []
+  };
+
+  function analyticsAllowed() {
+    if (!GOATCOUNTER_SITE) return false;
+    const protocol = window.location.protocol;
+    if (protocol !== "http:" && protocol !== "https:") return false;
+
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") return false;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("debug") || params.has("nogc")) return false;
+
+    try {
+      if (window.localStorage.getItem("skipgc") === "t") return false;
+    } catch {
+      /* localStorage can be unavailable in private mode */
+    }
+    return true;
+  }
+
+  function initAnalytics() {
+    analytics.enabled = analyticsAllowed();
+    if (!analytics.enabled) return;
+
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = "https://gc.zgo.at/count.js";
+    script.dataset.goatcounter = GOATCOUNTER_SITE;
+    script.addEventListener("load", flushAnalytics);
+    document.head.appendChild(script);
+  }
+
+  // Record a gameplay event. Events that happen before count.js is ready are queued.
+  function trackEvent(path, title) {
+    if (!analytics.enabled) return;
+    const payload = { path, title, event: true };
+    if (window.goatcounter && typeof window.goatcounter.count === "function") {
+      window.goatcounter.count(payload);
+    } else if (analytics.queue.length < 40) {
+      analytics.queue.push(payload);
+    }
+  }
+
+  function flushAnalytics() {
+    if (!analytics.enabled) return;
+    if (!window.goatcounter || typeof window.goatcounter.count !== "function") return;
+    for (const payload of analytics.queue.splice(0)) {
+      window.goatcounter.count(payload);
+    }
   }
 
   /* ---------- toast ---------- */
@@ -3302,6 +3370,7 @@ body.modal-open {
       applyImage(result.url);
       resetRound({ animate: false });
       refreshBest();
+      trackEvent("upload-photo", "上傳照片");
 
       if (announce) {
         showToast(`「${game.imageName}」已換好，開始拼吧`);
@@ -3418,6 +3487,7 @@ body.modal-open {
   }
 
   function init() {
+    initAnalytics();
     buildTiles();
     refreshBest();
 
