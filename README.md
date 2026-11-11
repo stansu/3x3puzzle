@@ -139,15 +139,16 @@ git push -u origin main
 
 1. 到 [goatcounter.com](https://www.goatcounter.com/) 註冊一個免費帳號。
 2. **Site code** 設為 `3x3puzzle`（對應 `https://3x3puzzle.goatcounter.com`）。
-3. 若使用其他 code，修改 `index.html` 裡的這一行並重新推送：
+3. 若使用其他 code，修改 `index.html` `<head>` 裡的 GoatCounter 網址：
 
-```js
-const GOATCOUNTER_SITE = "https://<你的 code>.goatcounter.com/count";
+```html
+<script data-goatcounter="https://<你的 code>.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 ```
 
 4. 之後到 [GoatCounter 後台](https://3x3puzzle.goatcounter.com) 就能看到瀏覽量與事件。
 
-> 在 GoatCounter 建立 site 之前，統計請求會被服務端忽略；註冊後就會開始收到資料。不想統計時，把 `GOATCOUNTER_SITE` 設為空字串即可完全關閉。
+> 不想統計時，刪掉 `<head>` 裡 GoatCounter 的兩段 script 即可完全關閉。
 
 ## 隱私
 
@@ -161,13 +162,13 @@ const GOATCOUNTER_SITE = "https://<你的 code>.goatcounter.com/count";
 - 主色、背景色：修改 `index.html` 裡 `:root` 的 CSS 變數（例如 `--accent`）。
 - 預設圖片：修改 `makeDefaultArtwork()` 函式。
 - 求解器：`solvePuzzle()` 以 A\* 實作，可調整估價函數或搜尋上限。
-- 統計：修改 `GOATCOUNTER_SITE` 常數；設為 `""` 就不再載入 GoatCounter。
+- 統計：修改 `<head>` 裡的 `data-goatcounter` 網址；刪掉該段 script 就不再載入 GoatCounter。
 - 若不想公開程式碼，可改用 Cloudflare Pages 或 Netlify 搭配私有 repo；GitHub Pages 免費方案需要公開 repo。
 
 ## 開發者小工具
 
 - `?noguide`：略過第一次開啟時自動顯示的教學。
-- `?nogc`：不載入 GoatCounter 統計（單次瀏覽用）。
+- `?nogc`：不送出 GoatCounter 統計（單次瀏覽用）。
 - `?debug`：在瀏覽器 console 使用 `window.__puzzleDebug`（同時關閉統計）：
 
 ```js
